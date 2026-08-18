@@ -22,16 +22,41 @@ const state = {
   settings: FLSettings.DEFAULTS
 };
 
-const TABS = [
-  { id: 'not_following_back', label: "Doesn't follow you back" },
-  { id: 'not_followed_back', label: "You don't follow back" },
-  { id: 'mutuals', label: 'Mutuals' },
-  { id: 'new_followers', label: 'New followers' },
-  { id: 'lost_followers', label: 'Lost followers' },
-  { id: 'new_following', label: 'Newly followed' },
-  { id: 'you_unfollowed', label: 'You unfollowed' },
-  { id: 'history', label: 'History' }
+/*
+ * Grouped so the two-scan requirement is visible up front. Everything under
+ * "Since your last scan" is empty until a second scan exists, which used to
+ * read as a bug rather than as a fact about how change detection works.
+ */
+const TAB_GROUPS = [
+  {
+    label: 'Right now',
+    tabs: [
+      { id: 'not_following_back', label: "Doesn't follow you back" },
+      { id: 'not_followed_back', label: "You don't follow back" },
+      { id: 'mutuals', label: 'Mutuals' }
+    ]
+  },
+  {
+    label: 'Since your last scan',
+    needsTwoScans: true,
+    tabs: [
+      { id: 'lost_followers', label: 'Unfollowed you' },
+      { id: 'new_followers', label: 'New followers' },
+      { id: 'new_following', label: 'You followed' },
+      { id: 'you_unfollowed', label: 'You unfollowed' }
+    ]
+  },
+  {
+    label: 'Over time',
+    tabs: [{ id: 'history', label: 'History' }]
+  }
 ];
+
+const TABS = TAB_GROUPS.flatMap((g) => g.tabs);
+
+const CHANGE_TABS = new Set(
+  TAB_GROUPS.filter((g) => g.needsTwoScans).flatMap((g) => g.tabs.map((t) => t.id))
+);
 
 // ------------------------------------------------------------------- utils
 
@@ -112,32 +137,50 @@ function renderStats() {
     { k: 'Followers', n: followers.length },
     { k: 'Following', n: following.length },
     {
-      k: "Doesn't follow back",
-      n: following.filter((u) => !followerIds.has(u.pk)).length
+      k: "Doesn't follow you back",
+      n: following.filter((u) => !followerIds.has(u.pk)).length,
+      tab: 'not_following_back'
     },
     {
-      k: 'Fans (you skip)',
-      n: followers.filter((u) => !followingIds.has(u.pk)).length
+      k: "You don't follow back",
+      n: followers.filter((u) => !followingIds.has(u.pk)).length,
+      tab: 'not_followed_back'
     },
     {
       k: 'Mutuals',
-      n: followers.filter((u) => followingIds.has(u.pk)).length
+      n: followers.filter((u) => followingIds.has(u.pk)).length,
+      tab: 'mutuals'
+    },
+    {
+      k: 'Unfollowed you',
+      n: delta ? delta.lostFollowers.length : 0,
+      tab: 'lost_followers',
+      tone: delta && delta.lostFollowers.length ? 'down' : '',
+      // Shown at zero rather than hidden: "no tile" and "nobody left" look
+      // identical otherwise, and this is the number people came for.
+      hint: delta ? '' : 'after your second scan'
     }
   ];
-
-  if (delta) {
-    tiles.push({ k: 'Lost since last scan', n: delta.lostFollowers.length });
-  }
 
   const stats = $('#stats');
   stats.textContent = '';
 
   for (const t of tiles) {
-    const card = document.createElement('div');
-    card.className = 'stat';
+    // Only tiles that lead somewhere are focusable; the rest stay plain text.
+    const card = document.createElement(t.tab ? 'button' : 'div');
+    card.className = 'stat' + (t.tab ? ' is-link' : '');
+
+    if (t.tab) {
+      card.type = 'button';
+      card.addEventListener('click', () => {
+        state.activeTab = t.tab;
+        render();
+        $('#tabs').scrollIntoView({ block: 'nearest' });
+      });
+    }
 
     const n = document.createElement('div');
-    n.className = 'n';
+    n.className = 'n' + (t.tone ? ' ' + t.tone : '');
     n.textContent = fmt(t.n);
     card.appendChild(n);
 
@@ -145,6 +188,13 @@ function renderStats() {
     k.className = 'k';
     k.textContent = t.k;
     card.appendChild(k);
+
+    if (t.hint) {
+      const hint = document.createElement('div');
+      hint.className = 'hint';
+      hint.textContent = t.hint;
+      card.appendChild(hint);
+    }
 
     stats.appendChild(card);
   }
@@ -154,27 +204,49 @@ function renderTabs() {
   const container = $('#tabs');
   container.textContent = '';
 
-  for (const tab of TABS) {
-    const btn = document.createElement('button');
-    btn.className = 'tab';
-    btn.type = 'button';
-    btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-selected', String(state.activeTab === tab.id));
-    btn.textContent = tab.label;
+  const hasDelta = !!snapshotDelta();
 
-    if (tab.id !== 'history') {
-      const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = fmt(listFor(tab.id).length);
-      btn.appendChild(badge);
+  for (const group of TAB_GROUPS) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tabgroup';
+
+    const label = document.createElement('span');
+    label.className = 'tabgroup-label';
+    label.textContent =
+      group.needsTwoScans && !hasDelta
+        ? group.label + ' (needs 2 scans)'
+        : group.label;
+    wrap.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'tabgroup-row';
+    row.setAttribute('role', 'tablist');
+
+    for (const tab of group.tabs) {
+      const btn = document.createElement('button');
+      btn.className = 'tab';
+      btn.type = 'button';
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(state.activeTab === tab.id));
+      btn.textContent = tab.label;
+
+      if (tab.id !== 'history') {
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = fmt(listFor(tab.id).length);
+        btn.appendChild(badge);
+      }
+
+      btn.addEventListener('click', () => {
+        state.activeTab = tab.id;
+        render();
+      });
+
+      row.appendChild(btn);
     }
 
-    btn.addEventListener('click', () => {
-      state.activeTab = tab.id;
-      render();
-    });
-
-    container.appendChild(btn);
+    wrap.appendChild(row);
+    container.appendChild(wrap);
   }
 }
 
@@ -279,19 +351,16 @@ function renderList() {
     fmt(users.length) + (users.length === 1 ? ' account' : ' accounts');
 
   if (!users.length) {
-    const delta = snapshotDelta();
-    const needsTwo = [
-      'new_followers',
-      'lost_followers',
-      'new_following',
-      'you_unfollowed'
-    ].includes(state.activeTab);
+    const needsTwo = CHANGE_TABS.has(state.activeTab) && !snapshotDelta();
+    const filtered = state.query.trim().length > 0;
 
     container.appendChild(
       emptyState(
-        needsTwo && !delta
-          ? 'Run at least two scans to see changes over time.'
-          : 'Nothing here.'
+        needsTwo
+          ? 'This fills in from your second scan onwards. Scan again in a few days.'
+          : filtered
+            ? 'No accounts match "' + state.query.trim() + '".'
+            : 'Nothing here — this list is empty.'
       )
     );
     return;
@@ -305,19 +374,19 @@ function renderList() {
 function render() {
   const isHistory = state.activeTab === 'history';
 
-  $('#history').hidden = !isHistory;
-  $('#list').hidden = isHistory;
-  document.querySelector('.toolbar').hidden = isHistory;
-
   renderStats();
   renderTabs();
 
   if (isHistory) renderHistory();
   else renderList();
 
+  // Visibility last: updateWelcome owns every panel's hidden flag, so letting
+  // it run after the renderers keeps one place responsible for the layout.
+  updateWelcome(!$('#progress').hidden);
+
   const profile = state.profile;
   $('#profile-line').textContent = profile?.username
-    ? '@' + profile.username + ' - last scan ' + timeAgo(state.latest?.ts)
+    ? '@' + profile.username + ' \u00b7 last scan ' + timeAgo(state.latest?.ts)
     : state.latest
       ? 'Last scan ' + timeAgo(state.latest.ts)
       : 'Not scanned yet';
@@ -327,7 +396,11 @@ function render() {
 
 function exportCsv() {
   const users = applyFilters(listFor(state.activeTab));
-  if (!users.length) return;
+  if (!users.length) {
+    // Silently doing nothing reads as a broken button.
+    showBanner('Nothing to export - this list is empty.', '');
+    return;
+  }
 
   const escape = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
 
@@ -362,21 +435,47 @@ function exportCsv() {
 
 function showBanner(text, kind) {
   const el = $('#banner');
-  el.textContent = text;
+  // textContent on the banner itself would delete the icon element.
+  $('#banner-text').textContent = text;
+  $('#banner-icon')
+    .querySelector('use')
+    .setAttribute('href', kind === 'error' ? '#i-alert' : '#i-check');
   el.className = 'banner' + (kind ? ' ' + kind : '');
   el.hidden = !text;
 }
 
 function setScanning(running, note, count) {
   $('#scan-btn').disabled = running;
-  $('#scan-btn').textContent = running ? 'Scanning...' : 'Scan now';
+  // Writing to the label span, not the button: textContent on the button
+  // would remove the icon along with the text.
+  $('#scan-label').textContent = running ? 'Scanning' : 'Scan now';
+  $('#scan-btn').classList.toggle('is-busy', running);
   $('#cancel-btn').hidden = !running;
   $('#progress').hidden = !running;
 
   if (running) {
     $('#progress-note').textContent = note || 'Working';
-    $('#progress-count').textContent = count ? ' - ' + fmt(count) + ' collected' : '';
+    $('#progress-count').textContent = count ? fmt(count) + ' collected so far' : '';
   }
+
+  updateWelcome(running);
+}
+
+/**
+ * Before the first scan there is nothing to show but a screen of zeroes, so
+ * swap the whole results area for instructions. Hidden again the moment a
+ * scan starts, so the progress line is not competing with a call to action.
+ */
+function updateWelcome(scanning) {
+  const firstRun = !state.latest && !scanning;
+
+  $('#welcome').hidden = !firstRun;
+  $('#stats').hidden = firstRun;
+  $('#tabs').hidden = firstRun;
+  $('#list').hidden = firstRun || state.activeTab === 'history';
+  $('#history').hidden = firstRun || state.activeTab !== 'history';
+  document.querySelector('.toolbar').hidden =
+    firstRun || state.activeTab === 'history';
 }
 
 async function loadStore() {
@@ -433,16 +532,21 @@ function renderEstimate(settings) {
     (state.latest?.followers?.length ?? 0) + (state.latest?.following?.length ?? 0);
   const sample = accounts > 0 ? accounts : 10000;
   const minutes = FLSettings.estimateMinutes(settings, sample);
-  const label = accounts > 0 ? 'your last scan size' : 'a 10,000-account example';
+  const duration =
+    minutes < 1
+      ? 'under a minute'
+      : minutes < 90
+        ? 'about ' + Math.round(minutes) + ' minutes'
+        : 'about ' + (Math.round((minutes / 60) * 10) / 10) + ' hours';
 
   $('#settings-estimate').textContent =
-    'Estimated scan time for ' +
-    label +
-    ' (' +
-    fmt(sample) +
-    ' accounts): about ' +
-    (minutes < 1 ? 'under a minute' : Math.round(minutes) + ' minutes') +
-    '.';
+    accounts > 0
+      ? 'At these settings your last scan size (' +
+        fmt(sample) +
+        ' accounts) would take ' +
+        duration +
+        '.'
+      : 'At these settings a 10,000-account profile would take ' + duration + '.';
 }
 
 function setSettingsStatus(text) {
@@ -515,9 +619,11 @@ $('#export-btn').addEventListener('click', exportCsv);
 $('#settings-btn').addEventListener('click', () => {
   const panel = $('#settings-panel');
   panel.hidden = !panel.hidden;
+  $('#settings-btn').setAttribute('aria-expanded', String(!panel.hidden));
   if (!panel.hidden) {
     fillSettingsForm(state.settings);
     setSettingsStatus('');
+    $('#min-delay').focus();
   }
 });
 
@@ -538,6 +644,39 @@ for (const sel of Object.values(SETTING_FIELDS)) {
     setSettingsStatus('Unsaved changes.');
   });
 }
+
+/*
+ * "/" to jump to the filter and Escape to clear it: with lists this long,
+ * reaching for the mouse to filter is the main friction in the page.
+ */
+document.addEventListener('keydown', (e) => {
+  const search = $('#search');
+  const typing =
+    e.target instanceof HTMLInputElement ||
+    e.target instanceof HTMLSelectElement ||
+    e.target instanceof HTMLTextAreaElement;
+
+  if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    e.preventDefault();
+    search.focus();
+    search.select();
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (e.target === search && search.value) {
+      search.value = '';
+      state.query = '';
+      renderList();
+      return;
+    }
+    if (!$('#settings-panel').hidden) {
+      $('#settings-panel').hidden = true;
+      $('#settings-btn').setAttribute('aria-expanded', 'false');
+      $('#settings-btn').focus();
+    }
+  }
+});
 
 $('#wipe-btn').addEventListener('click', async () => {
   await api.storage.local.clear();

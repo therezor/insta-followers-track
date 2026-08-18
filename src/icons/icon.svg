@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Follower Tracker">
+  <!--
+    Glyph: "user-search" from Tabler Icons (https://tabler.io/icons), MIT
+    licensed. Vendored rather than linked: this extension loads nothing from
+    a remote host. Stroke widened from Tabler's 2 to 2.2 so it stays legible
+    once the 24x24 grid is scaled down to a 48px toolbar icon.
+  -->
+  <defs>
+    <linearGradient id="ft-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f6df6"/>
+      <stop offset="1" stop-color="#9b5bff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="url(#ft-bg)"/>
+
+  <g transform="translate(25.6 25.6) scale(3.2)"
+     fill="none" stroke="#ffffff" stroke-width="2.2"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/>
+    <path d="M6 21v-2a4 4 0 0 1 4 -4h1.5"/>
+    <path d="M15 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+    <path d="M20.2 20.2l1.8 1.8"/>
+  </g>
+</svg>

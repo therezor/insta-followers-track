@@ -80,20 +80,21 @@ scans before they show anything.
 
 ### Not yet run end-to-end
 
-Verified so far: the diff logic and pacing-settings clamping (22 unit tests),
-the dashboard's list rendering (against stubbed data), `web-ext lint` clean,
-and — probed live on
+Verified so far: the diff logic and pacing-settings clamping (22 unit tests);
+the whole dashboard rendering in a real Chrome tab against stubbed extension
+APIs — stats, grouped tabs, list rows, history, the Settings panel and the
+first-run panel, with no console errors; `web-ext lint` clean; and — probed
+live on
 instagram.com — that `ds_user_id` and `csrftoken` are readable from
 `document.cookie`, that `sessionid` is HttpOnly (so `credentials: 'include'`
 is required, as used), and that the App ID is scrapeable and matches the
 fallback constant.
 
-**Not** verified: the fetch loop, content-script injection, message passing,
-`storage.local`, and the Settings panel have never run in a real browser, and
-the REST response shape is assumed rather than observed. The settings *logic*
-is unit-tested; the panel that edits it has only been checked statically (every
-`$('#id')` in `dashboard.js` resolves to an id in `dashboard.html`). Smoke
-test:
+**Not** verified: the fetch loop, content-script injection, message passing and
+`storage.local` have never run in a real browser, and the REST response shape
+is assumed rather than observed. The dashboard has only been driven against a
+stub — real `storage.local` reads, live progress messages and the scan
+lifecycle are still unexercised. Smoke test:
 
 1. `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome`
 2. Open instagram.com, click the toolbar icon
@@ -157,6 +158,29 @@ real follower loss.
 `unlimitedStorage` is requested because a large account across 60 snapshots
 exceeds the default quota. **Delete all stored data** in the footer wipes
 everything, including your pacing settings, which return to defaults.
+
+## Icons
+
+The logo and the UI glyphs are [Tabler Icons](https://tabler.io/icons) (MIT),
+vendored inline rather than linked — nothing in this extension loads from a
+remote host. `src/icons/icon.svg` is the logo source (`user-search` on a
+gradient tile); the PNGs beside it are rendered from it with
+`rsvg-convert -w 128 -h 128 src/icons/icon.svg -o src/icons/icon-128.png`.
+Tabler is deliberately *not* a dependency in `package.json`, so `npm run
+build` still needs no `npm install`.
+
+The dashboard's sprite carries no `xmlns` attribute: HTML parses inline SVG
+without one, and adding it would put a URL into the output of the privacy
+grep below.
+
+## Previewing the dashboard without installing
+
+`dashboard.html` only needs `storage.local`, so it renders in a plain tab once
+that is stubbed. Copy `dist/chrome` somewhere scratch, add a script that
+defines `globalThis.chrome.storage.local.get/set` over a fixture plus no-op
+`runtime.sendMessage`/`onMessage`, load it before `settings.js`, and serve the
+directory over `python3 -m http.server`. That is how the rendering claims
+above were checked.
 
 ## Privacy
 

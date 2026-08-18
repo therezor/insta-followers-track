@@ -2,26 +2,42 @@
 
 <p align="center">
   <b>See who unfollowed you on Instagram.</b><br>
-  Free Instagram follower tracker for Chrome and Firefox.<br>
-  No account. No limit. No telemetry.
+  A free Instagram follower tracker for Chrome and Firefox.
 </p>
 
 <p align="center">
   <a href="TECHNICAL.md">Install</a> ·
   <a href="#what-it-shows">Features</a> ·
-  <a href="#100-free">Pricing</a> ·
-  <a href="#no-telemetry">Privacy</a> ·
+  <a href="#its-free-really-free">Pricing</a> ·
+  <a href="#your-data-never-leaves-your-computer">Privacy</a> ·
   <a href="LICENSE">MIT</a>
 </p>
 
 ---
 
+## The four things people ask first
+
+> ### 💚 It is free. All of it, forever.
+> No trial, no paid tier, no follower limit, no upsell, nothing to cancel.
+> There is no way to pay for this even if you wanted to.
+
+> ### 🔑 It never asks for your Instagram password.
+> You are already logged into Instagram in your browser. It uses that. There
+> is no login screen, no account to create, no email, no Google sign-in.
+
+> ### 📡 It sends nothing about you to anyone. No telemetry, ever.
+> No analytics, no tracking, no "anonymous usage stats", no crash reports, no
+> ads. Nobody — including the people who wrote this — can see that you use it
+> or what you looked at.
+
+> ### 💻 Your follower lists stay on your own computer.
+> They are saved in your browser, on your machine, and never uploaded. There
+> is no server, no cloud, no database anywhere. One button deletes the lot.
+
 ## Who unfollowed me on Instagram?
 
 That's the question this answers. Press **Scan now**, and you get a plain list
 of every account that unfollowed you since your last check.
-
-No sign-up. No password. No monthly fee. Nothing leaves your computer.
 
 > **Early build.** The reports are tested. The part that reads your follower
 > list has not been run against a live Instagram account yet.
@@ -44,45 +60,65 @@ Search, sort, and export any list to a spreadsheet (CSV).
 and how often it takes a longer break — so you can trade speed for staying
 under Instagram's radar.
 
-## 100% free
+## It's free. Really free.
 
-No trial. No paid tier. No follower cap. No account. No upsell.
+No trial. No paid tier. No follower cap. No account. No upsell. No card.
 
 Most Instagram unfollower apps stop at 500 followers and ask for a
-subscription. This one doesn't stop.
+subscription. This one doesn't stop, because there is nothing to sell you.
 
 | | Typical unfollowers app | Follower Tracker |
 | --- | --- | --- |
 | Price | Free trial, then monthly | **Free forever** |
 | Follower limit | Capped until you pay | **None** |
-| Sign-up | Google or email | **None** |
-| Your password | — | **Never asked** |
-| Tracking | Common | **None** |
-| Your data | Their servers | **Your browser** |
+| Sign-up | Google or email account | **None** |
+| Your Instagram password | Sometimes asked for | **Never asked for** |
+| Analytics / tracking | Common | **None at all** |
+| Where your data lives | The company's servers | **Your own computer** |
 
-## No telemetry
+It's published under the MIT licence, which means anyone can read the code and
+check that all of this is true.
 
-- No analytics. No crash reporting. No calls home.
-- One network request, to instagram.com — the site you're already using.
-- Your lists are stored in your own browser. There is no server.
-- One button deletes everything.
-- The Firefox build formally declares that it collects zero data.
+## Your data never leaves your computer
 
-Open source, so you can check all of that yourself. Commands are in
-[TECHNICAL.md](TECHNICAL.md).
+This is the part worth being precise about, so here it is in plain terms.
 
-## Install
+**What the extension talks to:** instagram.com, and nothing else. That's the
+same website your browser is already talking to when you scroll Instagram. It
+asks Instagram for your own follower list, the same way the Instagram app does.
 
-This repo holds the source. Your developer runs one command — no install step
-first — and loads the result into Chrome or Firefox. Takes about a minute:
-[TECHNICAL.md](TECHNICAL.md).
+**What it sends to us:** nothing. There is no "us". There is no server behind
+this product, no account system, no database, no analytics company, no error
+reporting service. Not "we anonymise it" — there is nowhere for it to go.
 
-## Good to know
+**Where your follower lists are kept:** in your browser's own storage, on your
+computer, like a bookmark. They are never uploaded anywhere. **Delete all
+stored data** in the footer erases them immediately and completely.
 
-Instagram doesn't officially allow tools like this — true of every follower
-tracker, paid ones included. Scans run slowly on purpose — about 25 minutes
-for a 10,000-follower account — and you can make them slower or faster under
-**Settings**. Scan occasionally, not constantly.
+**What it does not load:** no outside fonts, scripts, images, or ads. It even
+skips downloading profile pictures on purpose — showing initials instead —
+because loading an avatar would tell Instagram's servers which profiles you
+were looking at in your own dashboard.
+
+**About the Firefox version.** Mozilla makes every add-on state, in writing,
+what personal data it collects, and shows that to you before you install.
+Follower Tracker's answer is **"none"** — the strongest option Mozilla offers.
+It is a formal, checkable declaration, not a marketing promise.
+
+Because it's open source, none of this needs to be taken on trust. The exact
+commands to check it yourself are in [TECHNICAL.md](TECHNICAL.md).
+
+## Two things to know before you use it
+
+1. **It needs one build step.** This repository holds the source code, not a
+   ready-to-click download. Anyone technical can produce an installable
+   version in about a minute — a single command, with nothing to install
+   first. Instructions: [TECHNICAL.md](TECHNICAL.md).
+2. **Instagram doesn't officially allow tools like this.** Automatically
+   reading your own follower list is against Instagram's terms of service —
+   true of every follower tracker, paid ones included. Scans run slowly on
+   purpose (about 25 minutes for a 10,000-follower account) and you can make
+   them slower under **Settings**. Scan occasionally, not constantly.
 
 ## How it works
 
@@ -95,11 +131,11 @@ scan to the last one. That comparison is everything you see.
 - [TECHNICAL.md](TECHNICAL.md) — build, install, storage, privacy checks
 - [ANALYSIS.md](ANALYSIS.md) — why this was written from scratch
 
-MIT licensed.
+MIT licensed. Icon from [Tabler Icons](https://tabler.io/icons) (MIT).
 
 ---
 
 <sub>Keywords: instagram follower tracker, who unfollowed me on instagram,
 instagram unfollowers, unfollow tracker, ghost followers, non followers,
-free instagram tracker, chrome extension, firefox add-on, no telemetry,
-open source, privacy.</sub>
+free instagram tracker, no password, chrome extension, firefox add-on,
+no telemetry, private, open source.</sub>

@@ -3,26 +3,95 @@
 <head>
   <meta charset="utf-8">
   <title>Follower Tracker</title>
+  <link rel="icon" href="icons/icon-48.png">
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
+  <!--
+    Icon sprite. Glyphs are from Tabler Icons (MIT), vendored inline because
+    this page loads nothing from a remote host. No xmlns attribute: HTML parses
+    inline SVG without one, and adding it would put a URL into the output of
+    the privacy grep documented in TECHNICAL.md.
+  -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-refresh" viewBox="0 0 24 24">
+        <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/>
+        <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/>
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24">
+        <path d="M18 6l-12 12"/><path d="M6 6l12 12"/>
+      </symbol>
+      <symbol id="i-adjust" viewBox="0 0 24 24">
+        <path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+        <path d="M4 6l8 0"/><path d="M16 6l4 0"/>
+        <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+        <path d="M4 12l2 0"/><path d="M10 12l10 0"/>
+        <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+        <path d="M4 18l11 0"/><path d="M19 18l1 0"/>
+      </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24">
+        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/>
+        <path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/>
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/>
+        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/>
+        <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/>
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
+        <path d="M21 21l-6 -6"/>
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 9v4"/>
+        <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/>
+        <path d="M12 16h.01"/>
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
+        <path d="M9 12l2 2l4 -4"/>
+      </symbol>
+      <symbol id="i-user-search" viewBox="0 0 24 24">
+        <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/>
+        <path d="M6 21v-2a4 4 0 0 1 4 -4h1.5"/>
+        <path d="M15 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+        <path d="M20.2 20.2l1.8 1.8"/>
+      </symbol>
+    </defs>
+  </svg>
+
   <header class="topbar">
     <div class="brand">
-      <span class="mark" aria-hidden="true"></span>
-      <div>
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false"><use href="#i-user-search"/></svg>
+      </span>
+      <div class="brand-text">
         <h1>Follower Tracker</h1>
         <p class="sub" id="profile-line">Not scanned yet</p>
       </div>
     </div>
 
     <div class="actions">
-      <button id="settings-btn" class="btn ghost">Settings</button>
-      <button id="scan-btn" class="btn primary">Scan now</button>
-      <button id="cancel-btn" class="btn ghost" hidden>Cancel</button>
+      <button id="settings-btn" class="btn ghost" type="button" aria-expanded="false" aria-controls="settings-panel">
+        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-adjust"/></svg>
+        Settings
+      </button>
+      <button id="scan-btn" class="btn primary" type="button">
+        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg>
+        <span id="scan-label">Scan now</span>
+      </button>
+      <button id="cancel-btn" class="btn ghost" type="button" hidden>
+        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-x"/></svg>
+        Cancel
+      </button>
     </div>
   </header>
 
-  <div id="banner" class="banner" hidden></div>
+  <div id="banner" class="banner" role="status" aria-live="polite" hidden>
+    <svg class="i" id="banner-icon" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>
+    <span id="banner-text"></span>
+  </div>
 
   <section id="settings-panel" class="settings" hidden>
     <h2>Scan speed</h2>
@@ -34,7 +103,7 @@
       <div class="range-row">
         <input id="min-delay" type="number" min="0" max="300" step="0.5" inputmode="decimal">
         <span class="tilde">~</span>
-        <input id="max-delay" type="number" min="0" max="300" step="0.5" inputmode="decimal">
+        <input id="max-delay" type="number" min="0" max="300" step="0.5" inputmode="decimal" aria-label="Longest interval between requests, seconds">
       </div>
     </div>
 
@@ -50,41 +119,65 @@
       <div class="range-row">
         <input id="pause-min" type="number" min="0" max="120" step="0.5" inputmode="decimal">
         <span class="tilde">~</span>
-        <input id="pause-max" type="number" min="0" max="120" step="0.5" inputmode="decimal">
+        <input id="pause-max" type="number" min="0" max="120" step="0.5" inputmode="decimal" aria-label="Longest pause, minutes">
       </div>
     </div>
 
     <p id="settings-estimate" class="muted"></p>
 
     <div class="settings-actions">
-      <button id="settings-save" class="btn primary small">Save</button>
-      <button id="settings-reset" class="btn ghost small">Reset to defaults</button>
-      <span id="settings-status" class="muted"></span>
+      <button id="settings-save" class="btn primary small" type="button">Save</button>
+      <button id="settings-reset" class="btn ghost small" type="button">Reset to defaults</button>
+      <span id="settings-status" class="muted" role="status" aria-live="polite"></span>
     </div>
   </section>
 
-  <section id="progress" class="progress" hidden>
+  <section id="progress" class="progress" role="status" aria-live="polite" hidden>
     <div class="spinner" aria-hidden="true"></div>
-    <div>
+    <div class="progress-text">
       <strong id="progress-note">Working</strong>
       <span id="progress-count" class="muted"></span>
     </div>
   </section>
 
+  <section id="welcome" class="welcome" hidden>
+    <span class="welcome-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false"><use href="#i-user-search"/></svg>
+    </span>
+    <h2>See who unfollowed you</h2>
+    <p>Press <strong>Scan now</strong>. Follower Tracker reads your own
+      follower and following lists from the Instagram tab you are already
+      logged into, and keeps them on this computer.</p>
+    <ol>
+      <li>Make sure you are logged in at instagram.com.</li>
+      <li>Press <strong>Scan now</strong> and leave the tab open.</li>
+      <li>Scan again in a few days — the change lists fill in from the second
+        scan onwards.</li>
+    </ol>
+    <p class="muted">No account, no password, no follower limit. Nothing is
+      sent anywhere.</p>
+  </section>
+
   <section class="stats" id="stats"></section>
 
-  <nav class="tabs" id="tabs"></nav>
+  <nav class="tabs" id="tabs" aria-label="Views"></nav>
 
   <section class="toolbar">
-    <input id="search" type="search" placeholder="Filter by username or name" autocomplete="off">
-    <select id="sort">
+    <div class="field">
+      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+      <input id="search" type="search" placeholder="Filter by username or name  ( / )" autocomplete="off" aria-label="Filter accounts">
+    </div>
+    <select id="sort" aria-label="Sort order">
       <option value="found">Order found (newest first)</option>
       <option value="username">Username A-Z</option>
       <option value="fullname">Name A-Z</option>
     </select>
     <span class="spacer"></span>
-    <span id="result-count" class="muted"></span>
-    <button id="export-btn" class="btn small">Export CSV</button>
+    <span id="result-count" class="muted" role="status" aria-live="polite"></span>
+    <button id="export-btn" class="btn small" type="button">
+      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+      Export CSV
+    </button>
   </section>
 
   <section id="list" class="list"></section>
@@ -92,9 +185,13 @@
   <section id="history" class="history" hidden></section>
 
   <footer class="foot">
-    <p>All data is computed and stored locally in this browser. Follower Tracker makes
-      no requests to any server other than instagram.com itself.</p>
-    <button id="wipe-btn" class="btn danger small">Delete all stored data</button>
+    <p>Everything is computed and stored in this browser, on this computer.
+      Follower Tracker sends nothing to any server except instagram.com itself,
+      and it has no analytics of any kind.</p>
+    <button id="wipe-btn" class="btn danger small" type="button">
+      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-trash"/></svg>
+      Delete all stored data
+    </button>
   </footer>
 
   <script src="settings.js"></script>
