@@ -80,23 +80,31 @@ scans before they show anything.
 
 ### Not yet run end-to-end
 
-Verified so far: the diff logic and pacing settings (22 unit tests), the
-dashboard rendering
-(against stubbed data), `web-ext lint` clean, and — probed live on
+Verified so far: the diff logic and pacing-settings clamping (22 unit tests),
+the dashboard's list rendering (against stubbed data), `web-ext lint` clean,
+and — probed live on
 instagram.com — that `ds_user_id` and `csrftoken` are readable from
 `document.cookie`, that `sessionid` is HttpOnly (so `credentials: 'include'`
 is required, as used), and that the App ID is scrapeable and matches the
 fallback constant.
 
 **Not** verified: the fetch loop, content-script injection, message passing,
-and `storage.local` have never run in a real browser, and the REST response
-shape is assumed rather than observed. Smoke test:
+`storage.local`, and the Settings panel have never run in a real browser, and
+the REST response shape is assumed rather than observed. The settings *logic*
+is unit-tested; the panel that edits it has only been checked statically (every
+`$('#id')` in `dashboard.js` resolves to an id in `dashboard.html`). Smoke
+test:
 
 1. `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome`
 2. Open instagram.com, click the toolbar icon
 3. **Scan now** — watch the counter go past 50. That's the real check: it
    proves pagination works, not just the first page.
 4. Scan again later — New/Lost followers should populate.
+5. **Settings** → set *Pause after every* to `2`, Save, rescan. The progress
+   line should switch to a cooling-down countdown, and **Cancel** should take
+   effect within a second rather than at the end of the pause. At the default
+   of 200 this path needs a very large account to reach, so this is the only
+   cheap way to exercise it.
 
 If step 3 shows 0 accounts and no error, the REST response shape is wrong and
 `collectList()` in `src/content.js` needs adjusting to whatever

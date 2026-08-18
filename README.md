@@ -37,9 +37,12 @@ No sign-up. No password. No monthly fee. Nothing leaves your computer.
 | **New followers** | Accounts that arrived since your last scan |
 | **Recently followed / unfollowed** | Your own follow activity |
 | **History** | Every scan, with the gain or loss |
-| **Scan speed settings** | Set the gap between requests and how often it pauses |
 
 Search, sort, and export any list to a spreadsheet (CSV).
+
+**Settings** lets you control how fast a scan runs — the gap between requests
+and how often it takes a longer break — so you can trade speed for staying
+under Instagram's radar.
 
 ## 100% free
 

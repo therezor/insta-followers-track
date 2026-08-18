@@ -58,7 +58,11 @@
 
       if (FLSettings.shouldLongPause(settings, this.completed)) {
         const ms = FLSettings.longPauseMs(settings);
-        await waitFor(ms, (secondsLeft) =>
+        await waitFor(ms, (secondsLeft) => {
+          // Every tick would be a storage write in the background for a
+          // change nobody can read. Five-second steps, then every second
+          // near zero where the countdown is actually being watched.
+          if (secondsLeft > 5 && secondsLeft % 5 !== 0) return;
           broadcast({
             type: 'FL_PROGRESS',
             phase: 'waiting',
@@ -67,8 +71,8 @@
               this.completed +
               ' requests - resuming in ' +
               formatCountdown(secondsLeft)
-          })
-        );
+          });
+        });
         return;
       }
 
