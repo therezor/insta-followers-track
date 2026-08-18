@@ -10,8 +10,11 @@
 const api = globalThis.browser ?? globalThis.chrome;
 
 const MAX_SNAPSHOTS = 60;
-const PING_ATTEMPTS = 12;
 const PING_INTERVAL_MS = 500;
+// instagram.com is a heavy SPA and a background tab is throttled, so the old
+// six-second budget expired before the content script ever ran.
+const TAB_READY_TIMEOUT_MS = 25000;
+const CONTENT_FILES = ['settings.js', 'content.js'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -77,6 +80,55 @@ async function pingTab(tabId) {
   }
 }
 
+/** Resolve once the tab has finished loading, or false if it never does. */
+async function waitForTabComplete(tabId, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    let tab;
+    try {
+      tab = await api.tabs.get(tabId);
+    } catch (_) {
+      return false; // tab closed underneath us
+    }
+    if (tab.status === 'complete') return true;
+    await sleep(PING_INTERVAL_MS);
+  }
+
+  return false;
+}
+
+/**
+ * Inject the content script by hand.
+ *
+ * A manifest content_scripts entry only applies to pages loaded *after* the
+ * extension was installed or reloaded, so any instagram.com tab that was
+ * already open has no content script and never will until it is reloaded.
+ * That is the single most common reason a scan cannot find a usable tab, and
+ * this is the fix for it. Both files go in, in order: content.js reads
+ * FLSettings out of settings.js.
+ */
+async function injectContentScript(tabId) {
+  if (!api.scripting?.executeScript) return false;
+  try {
+    await api.scripting.executeScript({
+      target: { tabId },
+      files: CONTENT_FILES
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Ping, and if nobody answers, inject and ping again. */
+async function reachTab(tabId) {
+  if (await pingTab(tabId)) return true;
+  if (!(await injectContentScript(tabId))) return false;
+  await sleep(PING_INTERVAL_MS);
+  return pingTab(tabId);
+}
+
 /**
  * Find a logged-in instagram.com tab, creating one if the user has none open.
  * The content script must be live there for the scan to run same-origin.
@@ -85,23 +137,37 @@ async function ensureInstagramTab() {
   const tabs = await api.tabs.query({ url: '*://*.instagram.com/*' });
 
   for (const tab of tabs) {
-    if (await pingTab(tab.id)) return tab.id;
+    if (await reachTab(tab.id)) return tab.id;
   }
 
-  // Nothing usable - open one and wait for the content script to attach.
+  // Nothing usable - open one and wait for it to finish loading. Active,
+  // because the user is sitting and waiting on it either way, and a
+  // background tab is throttled hard enough to blow the timeout.
   const tab = await api.tabs.create({
     url: 'https://www.instagram.com/',
-    active: false
+    active: true
   });
 
-  for (let i = 0; i < PING_ATTEMPTS; i += 1) {
-    await sleep(PING_INTERVAL_MS);
-    if (await pingTab(tab.id)) return tab.id;
+  const loaded = await waitForTabComplete(tab.id, TAB_READY_TIMEOUT_MS);
+
+  if (!loaded) {
+    throw new Error(
+      'instagram.com did not finish loading within ' +
+        Math.round(TAB_READY_TIMEOUT_MS / 1000) +
+        ' seconds. Check the tab that just opened - a slow connection, or a ' +
+        'login or checkpoint screen, will do this.'
+    );
   }
 
+  if (await reachTab(tab.id)) return tab.id;
+
+  // Loaded fine, but nothing is answering. That is the extension's own
+  // problem, not the user's, so say so rather than telling them to open a
+  // tab they can plainly see is already open.
   throw new Error(
-    'Could not reach instagram.com. Open it in a tab, make sure you are ' +
-      'logged in, then try again.'
+    'instagram.com loaded, but the extension could not attach to it. Reload ' +
+      'the extension on the extensions page, then try again. If it keeps ' +
+      'happening, the tab console will name the error.'
   );
 }
 

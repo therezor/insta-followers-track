@@ -9,10 +9,65 @@
 (() => {
   'use strict';
 
-  if (window.__followLensLoaded) return;
-  window.__followLensLoaded = true;
-
   const api = globalThis.browser ?? globalThis.chrome;
+
+  /*
+   * The flag is set *after* the listener is installed, not on entry. Set on
+   * entry, a script that died partway through would still look loaded, and a
+   * later programmatic injection would bail out at this line and leave the
+   * tab permanently unable to answer a ping.
+   */
+  if (window.__followTrackerReady) return;
+
+  // ------------------------------------------------------------- messaging
+
+  api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (!message || typeof message.type !== 'string') return;
+
+    if (message.type === 'FL_PING') {
+      sendResponse({ ok: true, scanning });
+      return;
+    }
+
+    if (message.type === 'FL_SCAN_CANCEL') {
+      cancelRequested = true;
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === 'FL_SCAN_START') {
+      if (scanning) {
+        sendResponse({ ok: false, error: 'A scan is already running.' });
+        return;
+      }
+
+      scanning = true;
+      cancelRequested = false;
+      sendResponse({ ok: true });
+
+      runScan()
+        .then((data) => {
+          broadcast({ type: 'FL_SCAN_DONE', data });
+        })
+        .catch((err) => {
+          broadcast({
+            type: 'FL_SCAN_ERROR',
+            error: err?.message || String(err),
+            code: err?.code || 'error'
+          });
+        })
+        .finally(() => {
+          scanning = false;
+          cancelRequested = false;
+        });
+
+      return;
+    }
+  });
+
+  window.__followTrackerReady = true;
+
+  // ------------------------------------------------------------------ setup
 
   const DEFAULT_APP_ID = '936619743392459';
   const PAGE_SIZE = 50;
@@ -23,7 +78,7 @@
 
   let scanning = false;
   let cancelRequested = false;
-  let settings = FLSettings.DEFAULTS;
+  let settings = null;   // resolved from FLSettings when a scan starts
 
   // ---------------------------------------------------------------- helpers
 
@@ -56,8 +111,8 @@
     async beforeRequest() {
       if (this.completed === 0) return;
 
-      if (FLSettings.shouldLongPause(settings, this.completed)) {
-        const ms = FLSettings.longPauseMs(settings);
+      if (globalThis.FLSettings.shouldLongPause(settings, this.completed)) {
+        const ms = globalThis.FLSettings.longPauseMs(settings);
         await waitFor(ms, (secondsLeft) => {
           // Every tick would be a storage write in the background for a
           // change nobody can read. Five-second steps, then every second
@@ -76,7 +131,7 @@
         return;
       }
 
-      await waitFor(FLSettings.requestDelayMs(settings));
+      await waitFor(globalThis.FLSettings.requestDelayMs(settings));
     },
 
     afterRequest() {
@@ -92,6 +147,18 @@
   }
 
   async function loadSettings() {
+    // Named explicitly so a missing settings.js fails here, with a message
+    // that says which file is absent, rather than at load time - where it
+    // would take the message listener down with it.
+    const FLSettings = globalThis.FLSettings;
+    if (!FLSettings) {
+      throw new ScanError(
+        'settings.js did not load in this tab. Reload the extension, then ' +
+          'reload instagram.com.',
+        'missing_settings'
+      );
+    }
+
     try {
       const store = await api.storage.local.get('settings');
       settings = FLSettings.normalizeSettings(store?.settings);
@@ -328,8 +395,10 @@
       );
       username = info?.user?.username || '';
       fullName = info?.user?.full_name || '';
-    } catch (_) {
-      /* username is cosmetic; proceed without it */
+    } catch (err) {
+      // The username is cosmetic, but a cancel raised here must not be eaten
+      // along with it - the scan would carry on after the user stopped it.
+      if (err instanceof ScanError && err.code === 'cancelled') throw err;
     }
 
     return { pk: String(userId), username, full_name: fullName };
@@ -394,47 +463,4 @@
 
   // ------------------------------------------------------------- messaging
 
-  api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!message || typeof message.type !== 'string') return;
-
-    if (message.type === 'FL_PING') {
-      sendResponse({ ok: true, scanning });
-      return;
-    }
-
-    if (message.type === 'FL_SCAN_CANCEL') {
-      cancelRequested = true;
-      sendResponse({ ok: true });
-      return;
-    }
-
-    if (message.type === 'FL_SCAN_START') {
-      if (scanning) {
-        sendResponse({ ok: false, error: 'A scan is already running.' });
-        return;
-      }
-
-      scanning = true;
-      cancelRequested = false;
-      sendResponse({ ok: true });
-
-      runScan()
-        .then((data) => {
-          broadcast({ type: 'FL_SCAN_DONE', data });
-        })
-        .catch((err) => {
-          broadcast({
-            type: 'FL_SCAN_ERROR',
-            error: err?.message || String(err),
-            code: err?.code || 'error'
-          });
-        })
-        .finally(() => {
-          scanning = false;
-          cancelRequested = false;
-        });
-
-      return;
-    }
-  });
 })();

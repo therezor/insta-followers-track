@@ -25,7 +25,7 @@ const shared = {
   description:
     'See who unfollowed you on Instagram. Free follower and unfollower ' +
     'tracker - no account, no limit, no telemetry.',
-  permissions: ['storage', 'unlimitedStorage', 'tabs'],
+  permissions: ['storage', 'unlimitedStorage', 'tabs', 'scripting'],
   host_permissions: ['*://*.instagram.com/*'],
   content_scripts: [
     {

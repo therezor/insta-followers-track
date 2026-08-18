@@ -91,6 +91,12 @@ scans before they show anything.
 - `content.js` runs on instagram.com, so its requests are same-origin and
   carry the session cookie the browser already has. No password is ever
   entered, requested, or stored.
+- A `content_scripts` entry only applies to pages loaded *after* the extension
+  was installed or reloaded, so an instagram.com tab that was already open has
+  no content script until it is reloaded. `background.js` therefore pings each
+  candidate tab and, on silence, injects `settings.js` + `content.js` with
+  `scripting.executeScript` before giving up. That is what the `scripting`
+  permission is for; it is the only reason it is requested.
 - It walks `/api/v1/friendships/<id>/followers/` and `.../following/`, 50 per
   page, following `next_max_id` to the end.
 - `background.js` persists results to `storage.local` as the current scan plus
@@ -122,7 +128,12 @@ lifecycle are still unexercised. Smoke test:
 3. **Scan now** — watch the counter go past 50. That's the real check: it
    proves pagination works, not just the first page.
 4. Scan again later — New/Lost followers should populate.
-5. **Settings** → set *Pause after every* to `2`, Save, rescan. The progress
+5. If a scan reports that it could not attach to instagram.com, open that
+   tab's console. `ReferenceError: FLSettings is not defined` means
+   `settings.js` did not load and the extension needs reloading; silence there
+   plus an error in the service-worker console (extensions page → *service
+   worker*) points at the tab plumbing instead.
+6. **Settings** → set *Pause after every* to `2`, Save, rescan. The progress
    line should switch to a cooling-down countdown, and **Cancel** should take
    effect within a second rather than at the end of the pause. At the default
    of 200 this path needs a very large account to reach, so this is the only
@@ -175,6 +186,11 @@ real follower loss.
 | `snapshots` | Up to 60 timestamped scans, ids only |
 | `directory` | id → name/flags, so accounts that leave still render properly |
 | `settings` | Your scan pacing settings |
+
+Permissions: `storage` and `unlimitedStorage` to keep scans; `tabs` to find
+your instagram.com tab and open the dashboard; `scripting` to attach the
+content script to a tab that predates the install; and host access to
+instagram.com only.
 
 Directory entries and the latest scan each carry a `profile_pic_url`, which is
 why those two keys are the bulk of the stored bytes for a large account.
