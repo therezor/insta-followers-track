@@ -131,9 +131,15 @@ scans before they show anything.
   the scan button is hidden rather than disabled during a scan: three buttons
   do not fit across 300px, and Stop is the only useful control mid-scan.
 
-### Not yet run end-to-end
+### What has and has not been run
 
-Verified so far: the diff logic, pacing-settings clamping, and the content
+Confirmed in Firefox against a live Instagram account during development: the
+content script attaches, a scan completes, results persist, and the dashboard
+renders them with real profile pictures. The REST response shape this depends
+on is therefore observed rather than assumed. That was the author's testing,
+not an automated check — the suite below is what runs on every build.
+
+Verified by the test suite and headless rendering: the diff logic, pacing-settings clamping, and the content
 script itself — it loads, answers a ping, and runs a complete scan against a
 stubbed Instagram, including pagination, cancellation, a logged-out session
 and profile-picture sanitising — and the per-account storage layout, including
@@ -148,11 +154,14 @@ instagram.com — that `ds_user_id` and `csrftoken` are readable from
 is required, as used), and that the App ID is scrapeable and matches the
 fallback constant.
 
-**Not** verified: the fetch loop, content-script injection, message passing and
-`storage.local` have never run in a real browser, and the REST response shape
-is assumed rather than observed. The dashboard has only been driven against a
-stub — real `storage.local` reads, live progress messages and the scan
-lifecycle are still unexercised. Smoke test:
+**Not** verified: Safari end to end — `dist/safari` is generated and its
+manifest is Safari-shaped, but the converter and Xcode build have never been
+run, and Safari's `declarativeNetRequest` has no `modifyHeaders`, so profile
+pictures are expected to fall back to initials there. Also unexercised: very
+large accounts (the pause path needs 200+ requests to reach), and Chrome — the
+code is identical and lints clean, but the live testing above was on Firefox.
+
+Smoke test for a fresh install:
 
 1. `chrome://extensions` → Developer mode → Load unpacked → `dist/chrome`
 2. Open instagram.com, click the toolbar icon

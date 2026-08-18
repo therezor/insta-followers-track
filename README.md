@@ -47,8 +47,10 @@ of every account that unfollowed you since your last check.
 **No sign-up. No password. No monthly fee. Nothing leaves your computer.
 It is open source.**
 
-> **Early build.** The reports are tested. The part that reads your follower
-> list has not been run against a live Instagram account yet.
+> **Version 1.0.** Scanning, storage and the dashboard have been run against a
+> live Instagram account on Firefox. Chrome shares the same code but has had
+> less real-world use, and Safari needs a build step Apple requires — see
+> [TECHNICAL.md](TECHNICAL.md).
 
 ## What it shows
 
