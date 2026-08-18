@@ -5,6 +5,11 @@
 
 body.popup {
   width: 300px;
+  /* Nothing may widen the popup. A long progress line - "Cooling down after
+     200 requests - resuming in 2m 30s" - used to stretch it and give the
+     whole popup a horizontal scrollbar. */
+  max-width: 300px;
+  overflow-x: hidden;
   margin: 0;
   padding: 14px;
   background: var(--bg);
@@ -60,8 +65,11 @@ body.popup {
   background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius);
 }
-.pprogress-text { display: flex; flex-direction: column; min-width: 0; }
-.pprogress-text strong { font-size: 13px; }
+.pprogress { min-width: 0; }
+.pprogress-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pprogress-text strong,
+.pprogress-text span { min-width: 0; overflow-wrap: anywhere; }
+.pprogress-text strong { font-size: 13px; line-height: 1.35; }
 .pprogress-text span { font-size: 12px; }
 .spinner {
   width: 15px; height: 15px; flex: none; border-radius: 50%;
@@ -97,13 +105,14 @@ body.popup {
 
 /* --------------------------------------------------------------- actions */
 
-.pactions { display: flex; gap: 6px; }
+.pactions { display: flex; gap: 6px; min-width: 0; }
 .btn {
   font: inherit; font-size: 13px; cursor: pointer;
   border-radius: var(--radius); border: 1px solid var(--line);
   background: var(--panel); color: var(--text); padding: 8px 10px;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  flex: 1; white-space: nowrap;
+  flex: 1 1 0; min-width: 0; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
   transition: background .12s ease, filter .12s ease;
 }
 .btn:hover:not(:disabled) { background: var(--panel-2); }
@@ -113,7 +122,9 @@ body.popup {
   border-color: transparent; font-weight: 600;
 }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
-.btn.ghost { background: transparent; flex: 0 0 auto; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn.danger:hover:not(:disabled) { background: var(--panel); }
 .btn.is-busy .i { animation: spin 1.1s linear infinite; }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

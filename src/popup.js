@@ -47,9 +47,9 @@ function showError(text) {
 }
 
 function setScanning(running, note, count) {
-  $('#p-scan').disabled = running;
-  $('#p-scan').classList.toggle('is-busy', running);
-  $('#p-scan-label').textContent = running ? 'Scanning' : 'Scan now';
+  // Hidden rather than disabled: three buttons do not fit across 300px, and
+  // Stop is the only useful control mid-scan anyway.
+  $('#p-scan').hidden = running;
   $('#p-cancel').hidden = !running;
   $('#p-progress').hidden = !running;
 

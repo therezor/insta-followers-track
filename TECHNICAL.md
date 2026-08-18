@@ -124,6 +124,12 @@ scans before they show anything.
   disagree.
 - Setting `default_popup` means `action.onClicked` no longer fires; the
   listener is kept as a fallback for a popup that fails to load.
+- The popup is pinned to 300px and nothing may widen it. A popup that
+  overflows does not clip, it grows a horizontal scrollbar — which is what the
+  longest progress line ("Cooling down after 200 requests — resuming in
+  2m 30s") used to do. Progress text wraps, buttons shrink and ellipsise, and
+  the scan button is hidden rather than disabled during a scan: three buttons
+  do not fit across 300px, and Stop is the only useful control mid-scan.
 
 ### Not yet run end-to-end
 
