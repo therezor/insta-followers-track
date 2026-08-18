@@ -56,8 +56,13 @@ It is open source.**
 | **New followers** | Accounts that arrived since your last scan |
 | **Recently followed / unfollowed** | Your own follow activity |
 | **History** | Every scan, with the gain or loss |
+| **Several accounts** | Each Instagram account is tracked separately |
 
 Search, sort, and export any list to a spreadsheet (CSV).
+
+If you use more than one Instagram account, each is tracked on its own. Scan
+while logged into a different account and it gets its own history — switch
+between them with the account picker at the top.
 
 **Settings** lets you control how fast a scan runs — the gap between requests
 and how often it takes a longer break — so you can trade speed for staying

@@ -63,8 +63,13 @@ function renderSummary(store) {
   const latest = store.latest ?? null;
   const snapshots = Array.isArray(store.snapshots) ? store.snapshots : [];
 
+  // With more than one account tracked, which one these numbers belong to is
+  // the first thing you need to know.
+  const others = (store.accountCount ?? 1) - 1;
+  const suffix = others > 0 ? ' · +' + others + ' more' : '';
+
   $('#p-profile').textContent = store.profile?.username
-    ? '@' + store.profile.username + ' · ' + timeAgo(latest?.ts)
+    ? '@' + store.profile.username + ' · ' + timeAgo(latest?.ts) + suffix
     : latest
       ? 'Last scan ' + timeAgo(latest.ts)
       : 'Not scanned yet';
@@ -93,15 +98,47 @@ function renderSummary(store) {
   lostEl.classList.toggle('down', lost > 0);
 }
 
+const dataKey = (pk) => 'acct:' + pk;
+
+/**
+ * Scans are filed per Instagram account. Ask the background for the index
+ * rather than reading it directly - that is what guarantees the migration
+ * from the old flat keys has finished first.
+ */
 async function load() {
-  const store = await api.storage.local.get([
-    'profile',
-    'latest',
-    'snapshots',
-    'settings'
-  ]);
-  renderSummary(store);
-  return store;
+  let accounts = {};
+  let activeAccount = null;
+
+  try {
+    const res = await api.runtime.sendMessage({ type: 'FL_GET_ACCOUNTS' });
+    if (res?.ok) {
+      accounts = res.accounts || {};
+      activeAccount = res.activeAccount ?? Object.keys(accounts)[0] ?? null;
+    }
+  } catch (_) {
+    /* background asleep; the empty state below is the honest answer */
+  }
+
+  if (!activeAccount || !accounts[activeAccount]) {
+    renderSummary({ profile: null, latest: null, snapshots: [] });
+    return;
+  }
+
+  const key = dataKey(activeAccount);
+  const store = await api.storage.local.get(key);
+  const bucket = store[key] ?? {};
+  const account = accounts[activeAccount];
+
+  renderSummary({
+    profile: {
+      pk: account.pk,
+      username: account.username,
+      full_name: account.full_name
+    },
+    latest: bucket.latest ?? null,
+    snapshots: Array.isArray(bucket.snapshots) ? bucket.snapshots : [],
+    accountCount: Object.keys(accounts).length
+  });
 }
 
 // ------------------------------------------------------------------ events

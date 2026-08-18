@@ -21,7 +21,7 @@ src/          shared source — identical in all three browsers
   popup.html    toolbar popup: summary, scan, open dashboard
   theme.css     design tokens, linked by dashboard and popup alike
 build.mjs     emits dist/firefox and dist/chrome
-test/         unit tests: diff, pacing, content-script load and scan
+test/         unit tests: diff, pacing, content script, storage layout
 dist/         build output (gitignored)
 ```
 
@@ -34,7 +34,7 @@ them. All extension API calls go through
 
 ```sh
 npm run build     # -> dist/firefox, dist/chrome, dist/safari (no npm install needed)
-npm test          # 33 unit tests: diff, pacing, content-script load and scan
+npm test          # 43 unit tests: diff, pacing, content script, storage
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
 ```
@@ -136,7 +136,8 @@ scans before they show anything.
 Verified so far: the diff logic, pacing-settings clamping, and the content
 script itself — it loads, answers a ping, and runs a complete scan against a
 stubbed Instagram, including pagination, cancellation, a logged-out session
-and profile-picture sanitising (33 unit tests);
+and profile-picture sanitising — and the per-account storage layout, including
+migration (43 unit tests);
 the dashboard and the toolbar popup rendering in a real Chrome tab against
 stubbed extension APIs — stats, grouped tabs, list rows, history, the Settings
 panel, and the popup in both its populated and first-run states, with no
@@ -249,25 +250,58 @@ real follower loss.
 
 ## Storage
 
-| Key | Contents |
-| --- | --- |
-| `profile` | Your user id and username |
-| `latest` | Full follower/following lists from the most recent scan |
-| `snapshots` | Up to 60 timestamped scans, ids only |
-| `directory` | id → name/flags, so accounts that leave still render properly |
-| `settings` | Your scan pacing settings |
+Scan data is filed **per Instagram account**. One flat set of keys used to
+hold whatever was scanned last, so scanning a second account overwrote the
+first and the next diff compared two different people — reporting a smaller
+account's follower count as a mass unfollowing.
+
+| Key | Scope | Contents |
+| --- | --- | --- |
+| `accounts` | global | index: pk → username, name, last scan time, counts |
+| `activeAccount` | global | the pk the dashboard and popup are showing |
+| `acct:<pk>` | per account | `{ latest, snapshots, directory }` for that account |
+| `settings` | global | scan pacing — a property of this browser, not an account |
+| `scanState` | global | the running scan, so a reopened UI sees it |
+
+Inside a bucket: `latest` is the full follower/following lists from the most
+recent scan, `snapshots` is up to 60 timestamped scans holding ids only, and
+`directory` maps id → name/flags/picture so accounts that leave still render
+properly.
+
+`background.js` owns the layout and the migration from the old flat keys. The
+UI asks it for the index (`FL_GET_ACCOUNTS`) rather than reading `accounts`
+directly, because that is what guarantees migration has finished before the
+first read. Migration is memoised on a single promise, not merely idempotent —
+the background wakes and unloads constantly and both surfaces ask as they
+open, so two migrations could otherwise race over the same legacy keys. It
+writes the new keys first and removes the old ones second; a failed removal
+just means it re-runs harmlessly.
+
+> **History from before this change may mix accounts.** Migration files
+> everything that existed under the last account that was scanned, because
+> that is the only id the old layout recorded. Change lists correct themselves
+> from your next scan onwards, but the History tab can still show another
+> account's counts in that timeline. **Delete this account** in the footer
+> clears one account's history without touching the others.
 
 Permissions: `storage` and `unlimitedStorage` to keep scans; `tabs` to find
 your instagram.com tab and open the dashboard; `scripting` to attach the
 content script to a tab that predates the install; and host access to
 instagram.com only.
 
+`test/background-store.test.js` loads `background.js` in a `vm` over an
+in-memory `storage.local` and asserts the layout holds: legacy keys migrate
+once and are then removed, a second migration is a no-op, orphaned scan data
+with no account id is dropped rather than crashing, and — the reported bug —
+scanning account B leaves account A's bucket and history untouched.
+
 Directory entries and the latest scan each carry a `profile_pic_url`, which is
 why those two keys are the bulk of the stored bytes for a large account.
 
 `unlimitedStorage` is requested because a large account across 60 snapshots
-exceeds the default quota. **Delete all stored data** in the footer wipes
-everything, including your pacing settings, which return to defaults.
+exceeds the default quota. **Delete this account** removes one account's
+bucket and its index entry; **Delete all stored data** wipes everything,
+including your pacing settings, which return to defaults.
 
 ## Icons
 

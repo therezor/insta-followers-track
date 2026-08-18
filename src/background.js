@@ -298,37 +298,151 @@ function buildDirectory(existing, users) {
   return directory;
 }
 
+/*
+ * Per-account storage.
+ *
+ * Everything a scan produces is filed under the Instagram account it came
+ * from. Before this, one flat set of keys held whatever was scanned last, so
+ * scanning a second account overwrote the first and the next diff compared
+ * two different people - reporting a smaller account's followers as a mass
+ * unfollowing.
+ *
+ *   accounts        index: pk -> { username, full_name, lastScanTs, counts }
+ *   activeAccount   pk the UI is currently showing
+ *   acct:<pk>       { latest, snapshots, directory } for one account
+ *
+ * `settings` and `scanState` stay global - they are properties of this
+ * browser, not of an Instagram account.
+ */
+
+const dataKey = (pk) => 'acct:' + pk;
+
+const LEGACY_KEYS = ['profile', 'latest', 'snapshots', 'directory'];
+
+let migrated = null;
+
+/**
+ * Fold pre-multi-account storage into the first account bucket.
+ *
+ * Memoised, not merely idempotent: the background context wakes and unloads
+ * constantly, and the dashboard and popup both ask for accounts as they open.
+ * Two migrations racing over the same legacy keys is how history gets lost.
+ */
+function ensureMigrated() {
+  if (!migrated) migrated = runMigration().catch(() => {});
+  return migrated;
+}
+
+async function runMigration() {
+  const store = await api.storage.local.get([
+    'accounts',
+    'activeAccount',
+    ...LEGACY_KEYS
+  ]);
+
+  if (store.accounts && typeof store.accounts === 'object') return; // done
+  if (!store.latest && !store.snapshots) {
+    await api.storage.local.set({ accounts: {}, activeAccount: null });
+    return;
+  }
+
+  const pk = store.profile?.pk ? String(store.profile.pk) : null;
+  if (!pk) {
+    // Orphaned scan data with no account to file it under - a partially
+    // wiped store can reach this. Dropping it beats refusing to start.
+    await api.storage.local.set({ accounts: {}, activeAccount: null });
+    await api.storage.local.remove(LEGACY_KEYS);
+    return;
+  }
+
+  const latest = store.latest ?? null;
+
+  // Write the new shape first and remove the old keys second. If the removal
+  // fails, migration re-runs harmlessly; the other order has a window where
+  // the data is gone.
+  await api.storage.local.set({
+    accounts: { [pk]: summarize(store.profile, latest) },
+    activeAccount: pk,
+    [dataKey(pk)]: {
+      latest,
+      snapshots: Array.isArray(store.snapshots) ? store.snapshots : [],
+      directory:
+        store.directory && typeof store.directory === 'object'
+          ? store.directory
+          : {}
+    }
+  });
+
+  await api.storage.local.remove(LEGACY_KEYS);
+}
+
+/** The index entry for an account: enough to populate a switcher. */
+function summarize(profile, latest) {
+  return {
+    pk: String(profile?.pk ?? ''),
+    username: profile?.username || '',
+    full_name: profile?.full_name || '',
+    lastScanTs: latest?.ts ?? null,
+    followers: latest?.followers?.length ?? 0,
+    following: latest?.following?.length ?? 0
+  };
+}
+
+async function readAccounts() {
+  await ensureMigrated();
+  const store = await api.storage.local.get(['accounts', 'activeAccount']);
+  return {
+    accounts:
+      store.accounts && typeof store.accounts === 'object' ? store.accounts : {},
+    activeAccount: store.activeAccount ?? null
+  };
+}
+
 async function persistScan(data) {
-  const store = await api.storage.local.get(['snapshots', 'directory']);
-  const snapshots = Array.isArray(store.snapshots) ? store.snapshots : [];
-  const directory = store.directory && typeof store.directory === 'object'
-    ? store.directory
-    : {};
+  await ensureMigrated();
+
+  const pk = String(data.profile?.pk ?? '');
+  if (!pk) throw new Error('The scan did not identify an Instagram account.');
+
+  const key = dataKey(pk);
+  const store = await api.storage.local.get([key, 'accounts']);
+  const bucket = store[key] && typeof store[key] === 'object' ? store[key] : {};
+
+  const snapshots = Array.isArray(bucket.snapshots) ? bucket.snapshots : [];
+  const directory =
+    bucket.directory && typeof bucket.directory === 'object'
+      ? bucket.directory
+      : {};
 
   const ts = Date.now();
 
-  const snapshot = {
+  snapshots.push({
     ts,
     followerIds: toIdList(data.followers),
     followingIds: toIdList(data.following)
-  };
-
-  snapshots.push(snapshot);
+  });
   while (snapshots.length > MAX_SNAPSHOTS) snapshots.shift();
 
-  const merged = buildDirectory(
-    directory,
-    data.followers.concat(data.following)
-  );
+  const latest = { ts, followers: data.followers, following: data.following };
+
+  const accounts =
+    store.accounts && typeof store.accounts === 'object' ? store.accounts : {};
+  accounts[pk] = summarize(data.profile, latest);
 
   await api.storage.local.set({
-    profile: data.profile,
-    latest: { ts, followers: data.followers, following: data.following },
-    snapshots,
-    directory: merged
+    accounts,
+    activeAccount: pk,
+    [key]: {
+      latest,
+      snapshots,
+      directory: buildDirectory(
+        directory,
+        data.followers.concat(data.following)
+      )
+    }
   });
 
-  return ts;
+  return { ts, pk };
 }
 
 // --------------------------------------------------------------- messaging
@@ -351,10 +465,13 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'FL_SCAN_DONE') {
     persistScan(message.data)
-      .then((ts) => {
+      .then(({ ts, pk }) => {
         setScanState({ running: false, phase: 'done', note: '', error: null });
         try {
-          const p = api.runtime.sendMessage({ type: 'FL_STORE_UPDATED', ts });
+          // The pk matters: if the user was viewing one account and scanned
+          // while logged into another, the UI has to follow the scan rather
+          // than reload the account they were looking at.
+          const p = api.runtime.sendMessage({ type: 'FL_STORE_UPDATED', ts, pk });
           if (p && typeof p.catch === 'function') p.catch(() => {});
         } catch (_) {
           /* dashboard may be closed */
@@ -449,6 +566,49 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'FL_GET_ACCOUNTS') {
+    readAccounts()
+      .then((res) => sendResponse({ ok: true, ...res }))
+      .catch((err) => sendResponse({ ok: false, error: reasonOf(err) }));
+    return true;
+  }
+
+  if (message.type === 'FL_SET_ACTIVE_ACCOUNT') {
+    (async () => {
+      await ensureMigrated();
+      const pk = message.pk ? String(message.pk) : null;
+      await api.storage.local.set({ activeAccount: pk });
+      sendResponse({ ok: true, activeAccount: pk });
+    })().catch((err) => sendResponse({ ok: false, error: reasonOf(err) }));
+    return true;
+  }
+
+  if (message.type === 'FL_DELETE_ACCOUNT') {
+    (async () => {
+      await ensureMigrated();
+
+      const pk = String(message.pk ?? '');
+      if (!pk) throw new Error('No account given to delete.');
+
+      const store = await api.storage.local.get(['accounts', 'activeAccount']);
+      const accounts =
+        store.accounts && typeof store.accounts === 'object'
+          ? store.accounts
+          : {};
+
+      delete accounts[pk];
+      await api.storage.local.remove(dataKey(pk));
+
+      const remaining = Object.keys(accounts);
+      const activeAccount =
+        store.activeAccount === pk ? (remaining[0] ?? null) : store.activeAccount;
+
+      await api.storage.local.set({ accounts, activeAccount });
+      sendResponse({ ok: true, accounts, activeAccount });
+    })().catch((err) => sendResponse({ ok: false, error: reasonOf(err) }));
+    return true;
+  }
+
   if (message.type === 'FL_OPEN_DASHBOARD') {
     openDashboard()
       .then(() => sendResponse({ ok: true }))
@@ -461,6 +621,11 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 });
+
+// Fold any pre-multi-account storage forward as soon as the background wakes,
+// rather than on first use. Placed here because ensureMigrated() closes over a
+// `let` declared above it - calling it any earlier is a TDZ error at load.
+ensureMigrated();
 
 /*
  * With a default_popup set this never fires, but a popup that fails to load

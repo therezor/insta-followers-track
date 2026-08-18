@@ -267,3 +267,20 @@ h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
   #search { min-width: 100%; }
   .toolbar .spacer { display: none; }
 }
+
+/* --------------------------------------------------- account switching */
+
+.account-picker { display: flex; align-items: center; }
+#account-select {
+  font: inherit; font-size: 13px; padding: 8px 10px;
+  border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); max-width: 190px;
+}
+#account-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.foot-actions { display: flex; gap: 8px; flex: none; flex-wrap: wrap; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}

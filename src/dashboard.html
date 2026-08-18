@@ -74,6 +74,10 @@
     </div>
 
     <div class="actions">
+      <label class="account-picker" id="account-picker" hidden>
+        <span class="visually-hidden">Instagram account</span>
+        <select id="account-select"></select>
+      </label>
       <button id="settings-btn" class="btn ghost" type="button" aria-expanded="false" aria-controls="settings-panel">
         <svg class="i" aria-hidden="true" focusable="false"><use href="#i-adjust"/></svg>
         Settings
@@ -189,10 +193,16 @@
     <p>Everything is computed and stored in this browser, on this computer.
       Follower Tracker sends nothing to any server except instagram.com itself,
       and it has no analytics of any kind.</p>
-    <button id="wipe-btn" class="btn danger small" type="button">
-      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-trash"/></svg>
-      Delete all stored data
-    </button>
+    <div class="foot-actions">
+      <button id="delete-account-btn" class="btn small" type="button" hidden>
+        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-trash"/></svg>
+        <span id="delete-account-label">Delete this account</span>
+      </button>
+      <button id="wipe-btn" class="btn danger small" type="button">
+        <svg class="i" aria-hidden="true" focusable="false"><use href="#i-trash"/></svg>
+        Delete all stored data
+      </button>
+    </div>
   </footer>
 
   <script src="settings.js"></script>

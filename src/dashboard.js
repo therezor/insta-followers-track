@@ -12,6 +12,8 @@ const api = globalThis.browser ?? globalThis.chrome;
 const $ = (sel) => document.querySelector(sel);
 
 const state = {
+  accounts: {},
+  activeAccount: null,
   profile: null,
   latest: null,
   snapshots: [],
@@ -507,24 +509,102 @@ function updateWelcome(scanning) {
     firstRun || state.activeTab === 'history';
 }
 
-async function loadStore() {
-  const store = await api.storage.local.get([
-    'profile',
-    'latest',
-    'snapshots',
-    'directory',
-    'settings'
-  ]);
+const dataKey = (pk) => 'acct:' + pk;
 
-  state.profile = store.profile ?? null;
-  state.latest = store.latest ?? null;
-  state.snapshots = Array.isArray(store.snapshots) ? store.snapshots : [];
+/**
+ * Scan data is filed per Instagram account, so the dashboard always shows one
+ * account at a time. The background owns the index and the migration from the
+ * old flat keys, so ask it rather than reading `accounts` directly - that is
+ * what guarantees migration has finished before the first read.
+ */
+async function loadAccounts() {
+  try {
+    const res = await api.runtime.sendMessage({ type: 'FL_GET_ACCOUNTS' });
+    if (res?.ok) {
+      state.accounts = res.accounts || {};
+      state.activeAccount = res.activeAccount ?? null;
+    }
+  } catch (_) {
+    /* background asleep; fall through to whatever is already in state */
+  }
+
+  const known = Object.keys(state.accounts);
+  if (!state.activeAccount || !state.accounts[state.activeAccount]) {
+    state.activeAccount = known[0] ?? null;
+  }
+}
+
+async function loadStore() {
+  await loadAccounts();
+
+  const keys = ['settings'];
+  if (state.activeAccount) keys.push(dataKey(state.activeAccount));
+
+  const store = await api.storage.local.get(keys);
+  const bucket = state.activeAccount ? store[dataKey(state.activeAccount)] : null;
+  const account = state.activeAccount
+    ? state.accounts[state.activeAccount]
+    : null;
+
+  state.profile = account
+    ? { pk: account.pk, username: account.username, full_name: account.full_name }
+    : null;
+  state.latest = bucket?.latest ?? null;
+  state.snapshots = Array.isArray(bucket?.snapshots) ? bucket.snapshots : [];
   state.directory =
-    store.directory && typeof store.directory === 'object' ? store.directory : {};
+    bucket?.directory && typeof bucket.directory === 'object'
+      ? bucket.directory
+      : {};
   state.settings = FLSettings.normalizeSettings(store.settings);
 
   fillSettingsForm(state.settings);
+  renderAccountPicker();
   render();
+}
+
+function accountLabel(account) {
+  // Handle only. Appending follower counts pushed the option past the width
+  // of the select and truncated the handle - the one part that identifies it.
+  return account.username ? '@' + account.username : 'Account ' + account.pk;
+}
+
+function renderAccountPicker() {
+  const entries = Object.values(state.accounts).filter((a) => a && a.pk);
+  const picker = $('#account-picker');
+  const select = $('#account-select');
+  const del = $('#delete-account-btn');
+
+  // One account needs no switcher; the username is already in the header.
+  picker.hidden = entries.length < 2;
+  del.hidden = !state.activeAccount;
+
+  if (state.activeAccount && state.accounts[state.activeAccount]) {
+    const current = state.accounts[state.activeAccount];
+    $('#delete-account-label').textContent =
+      'Delete ' + (current.username ? '@' + current.username : 'this account');
+  }
+
+  select.textContent = '';
+  entries.sort((a, b) => (b.lastScanTs ?? 0) - (a.lastScanTs ?? 0));
+
+  for (const account of entries) {
+    const option = document.createElement('option');
+    option.value = account.pk;
+    option.textContent = accountLabel(account);
+    option.selected = account.pk === state.activeAccount;
+    select.appendChild(option);
+  }
+}
+
+async function switchAccount(pk) {
+  if (!pk || pk === state.activeAccount) return;
+  state.activeAccount = pk;
+  try {
+    await api.runtime.sendMessage({ type: 'FL_SET_ACTIVE_ACCOUNT', pk });
+  } catch (_) {
+    /* the local switch still stands for this page */
+  }
+  await loadStore();
 }
 
 // ---------------------------------------------------------------- settings
@@ -625,8 +705,20 @@ api.runtime.onMessage.addListener((message) => {
 
   if (message.type === 'FL_STORE_UPDATED') {
     setScanning(false);
-    showBanner('Scan complete.', 'ok');
-    loadStore();
+
+    // A scan can land on an account other than the one on screen, if the user
+    // switched Instagram logins. Follow it, and say so - silently reloading a
+    // different account's numbers looks like the bug this replaced.
+    const switched = message.pk && message.pk !== state.activeAccount;
+    if (message.pk) state.activeAccount = String(message.pk);
+
+    loadStore().then(() => {
+      const name = state.profile?.username ? '@' + state.profile.username : 'this account';
+      showBanner(
+        switched ? 'Scan complete - now showing ' + name + '.' : 'Scan complete.',
+        'ok'
+      );
+    });
   }
 });
 
@@ -712,8 +804,30 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+$('#account-select').addEventListener('change', (e) => {
+  switchAccount(e.target.value);
+});
+
+$('#delete-account-btn').addEventListener('click', async () => {
+  const pk = state.activeAccount;
+  if (!pk) return;
+
+  const res = await api.runtime.sendMessage({ type: 'FL_DELETE_ACCOUNT', pk });
+  if (!res?.ok) {
+    showBanner(res?.error || 'Could not delete that account.', 'error');
+    return;
+  }
+
+  state.accounts = res.accounts || {};
+  state.activeAccount = res.activeAccount ?? null;
+  await loadStore();
+  showBanner('Deleted that account\u2019s stored data.', 'ok');
+});
+
 $('#wipe-btn').addEventListener('click', async () => {
   await api.storage.local.clear();
+  state.accounts = {};
+  state.activeAccount = null;
   state.profile = null;
   state.latest = null;
   state.snapshots = [];
@@ -721,6 +835,7 @@ $('#wipe-btn').addEventListener('click', async () => {
   state.settings = FLSettings.DEFAULTS;
   fillSettingsForm(state.settings);
   setSettingsStatus('');
+  renderAccountPicker();
   showBanner('All stored data deleted.', 'ok');
   render();
 });
