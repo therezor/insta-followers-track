@@ -8,12 +8,17 @@
 <p align="center">
   <a href="TECHNICAL.md">Install</a> ·
   <a href="#what-it-shows">Features</a> ·
+  <a href="#what-it-looks-like">Screenshots</a> ·
   <a href="#its-free-really-free">Pricing</a> ·
   <a href="#your-data-never-leaves-your-computer">Privacy</a> ·
   <a href="LICENSE">MIT</a>
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/screenshots/unfollowers.png" alt="The Follower Tracker dashboard listing the accounts that unfollowed you" width="900">
+</p>
 
 ## The four things people ask first
 
@@ -67,6 +72,32 @@ between them with the account picker at the top.
 **Settings** lets you control how fast a scan runs — the gap between requests
 and how often it takes a longer break — so you can trade speed for staying
 under Instagram's radar.
+
+## What it looks like
+
+**One click from the toolbar** — a summary and a scan button, without opening
+anything:
+
+<p align="center">
+  <img src="docs/screenshots/popup.png" alt="The toolbar popup showing follower counts and a scan button" width="300">
+</p>
+
+**Every scan, kept** — so you can see the shape of your account over months,
+not just today:
+
+<p align="center">
+  <img src="docs/screenshots/history.png" alt="The history view listing every scan with the follower gain or loss" width="900">
+</p>
+
+**You decide how fast it runs** — slower scans are less likely to be rate
+limited, and it tells you what your settings will cost in time:
+
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="Scan speed settings with intervals, pause frequency and an estimated scan time" width="900">
+</p>
+
+<sub>Screenshots are the real extension with invented accounts. It follows
+your system light or dark theme.</sub>
 
 ## It's free. Really free.
 

@@ -324,7 +324,10 @@ that is stubbed. Copy `dist/chrome` somewhere scratch, add a script that
 defines `globalThis.chrome.storage.local.get/set` over a fixture plus no-op
 `runtime.sendMessage`/`onMessage`, load it before `settings.js`, and serve the
 directory over `python3 -m http.server`. That is how the rendering claims
-above were checked.
+above were checked, and how the README screenshots are produced — see
+[docs/screenshots/README.md](docs/screenshots/README.md) for the capture
+command. Pin `Date.now()` in the fixture or the relative times shift between
+captures.
 
 ## Privacy
 
