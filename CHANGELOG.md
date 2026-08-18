@@ -1,13 +1,5 @@
 # Changelog
 
-## 1.0.1 — 2026-08-18
-
-- Icons at every size Firefox and addons.mozilla.org ask for: 16, 32, 48, 64,
-  96 and 128. The 16px and 32px toolbar marks are redrawn rather than
-  downscaled — the magnifier in the full logo merges into the head below about
-  40px, so 32px uses a bolder version of the same composition and 16px drops
-  to the silhouette, which stays readable at that size.
-
 ## 1.0.0 — 2026-08-18
 
 First release. A local Instagram follower and unfollower tracker for Chrome,
@@ -26,6 +18,11 @@ Firefox and Safari.
 - **Configurable scan speed** — the random interval between requests
   (2–12 s by default), and a longer pause after every N requests
   (200, for 1–3 minutes), with a live estimate of what your settings cost.
+- **Icons at every size** Firefox, Chrome and addons.mozilla.org ask for: 16,
+  32, 48, 64, 96 and 128. The 16px and 32px toolbar marks are redrawn rather
+  than downscaled — the magnifier in the full logo merges into the head below
+  about 40px, so 32px uses a bolder version of the same composition and 16px
+  drops to the silhouette, which stays readable at that size.
 
 ### Privacy
 

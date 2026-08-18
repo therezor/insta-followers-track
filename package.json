@@ -1,6 +1,6 @@
 {
   "name": "insta-followers-track",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Follower Tracker - see who unfollowed you on Instagram. Free, local, no telemetry. Chrome, Firefox and Safari.",
   "private": true,
   "scripts": {
