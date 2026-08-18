@@ -32,6 +32,9 @@ Firefox and Safari.
 - The only hosts contacted are Instagram's own: instagram.com for your lists,
   and Instagram's image CDNs for profile pictures.
 - The Firefox build declares `data_collection_permissions: ["none"]`.
+- The privacy policy is in the repository as [PRIVACY.md](PRIVACY.md) and
+  published at https://therezor.github.io/insta-followers-track/privacy.html
+  — the URL the browser stores ask for.
 
 ### Known limits
 

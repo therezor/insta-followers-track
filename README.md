@@ -12,6 +12,7 @@
   <a href="#what-it-looks-like">Screenshots</a> ·
   <a href="#its-free-really-free">Pricing</a> ·
   <a href="#your-data-never-leaves-your-computer">Privacy</a> ·
+  <a href="PRIVACY.md">Policy</a> ·
   <a href="LICENSE">MIT</a>
 </p>
 
@@ -150,6 +151,11 @@ It is a formal, checkable declaration, not a marketing promise.
 Because it's open source, none of this needs to be taken on trust. The exact
 commands to check it yourself are in [TECHNICAL.md](TECHNICAL.md).
 
+The formal version is the [privacy policy](PRIVACY.md), also published as a
+page at
+[therezor.github.io/insta-followers-track/privacy.html](https://therezor.github.io/insta-followers-track/privacy.html)
+— that is the URL given to the browser stores.
+
 ## Install
 
 Download the build for your browser from
@@ -185,6 +191,7 @@ scan to the last one. That comparison is everything you see.
 
 - [TECHNICAL.md](TECHNICAL.md) — build, install, storage, privacy checks
 - [ANALYSIS.md](ANALYSIS.md) — why this was written from scratch
+- [PRIVACY.md](PRIVACY.md) — the privacy policy, in full
 
 MIT licensed. Icon from [Tabler Icons](https://tabler.io/icons) (MIT).
 
