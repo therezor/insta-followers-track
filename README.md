@@ -6,7 +6,8 @@
 </p>
 
 <p align="center">
-  <a href="TECHNICAL.md">Install</a> ·
+  <a href="https://github.com/therezor/insta-followers-track/releases/latest">Download</a> ·
+  <a href="#install">Install</a> ·
   <a href="#what-it-shows">Features</a> ·
   <a href="#what-it-looks-like">Screenshots</a> ·
   <a href="#its-free-really-free">Pricing</a> ·
@@ -149,13 +150,25 @@ It is a formal, checkable declaration, not a marketing promise.
 Because it's open source, none of this needs to be taken on trust. The exact
 commands to check it yourself are in [TECHNICAL.md](TECHNICAL.md).
 
+## Install
+
+Download the build for your browser from
+**[the latest release](https://github.com/therezor/insta-followers-track/releases/latest)**:
+
+- **Chrome** — extract the zip, then open `chrome://extensions`, turn on
+  **Developer mode**, click **Load unpacked**, and pick the extracted folder.
+- **Firefox** — open `about:debugging#/runtime/this-firefox`, click **Load
+  Temporary Add-on…**, and pick the zip. It stays until you restart Firefox.
+- **Safari** — needs Xcode, because Apple requires every Safari extension to
+  be wrapped in an app. See [TECHNICAL.md](TECHNICAL.md).
+
+Prefer to build it yourself? One command, nothing to install first —
+[TECHNICAL.md](TECHNICAL.md) has it.
+
 ## Two things to know before you use it
 
-1. **It needs one build step.** This repository holds the source code, not a
-   ready-to-click download. For Chrome and Firefox anyone technical can produce
-   an installable version in about a minute — a single command, with nothing to
-   install first. Safari is more work: Apple requires every Safari extension to
-   be wrapped in an app with Xcode. Instructions: [TECHNICAL.md](TECHNICAL.md).
+1. **It isn't in the browser stores yet.** For now you load it yourself with
+   the steps above — a couple of minutes. Store listings are coming.
 2. **Instagram doesn't officially allow tools like this.** Automatically
    reading your own follower list is against Instagram's terms of service —
    true of every follower tracker, paid ones included. Scans run slowly on
