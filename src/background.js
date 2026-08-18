@@ -1,5 +1,5 @@
 /*
- * FollowLens - background
+ * Follower Tracker - background
  *
  * Coordinates scans and owns persistence. All data stays in extension local
  * storage; there is no remote endpoint anywhere in this extension.

@@ -1,7 +1,7 @@
 {
   "name": "insta-followers-track",
   "version": "1.0.0",
-  "description": "Local Instagram follower / unfollower tracking for Firefox and Chrome.",
+  "description": "Follower Tracker - see who unfollowed you on Instagram. Free, local, no telemetry. Firefox and Chrome.",
   "private": true,
   "scripts": {
     "build": "node build.mjs",

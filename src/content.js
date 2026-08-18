@@ -1,5 +1,5 @@
 /*
- * FollowLens - content script
+ * Follower Tracker - content script
  *
  * Runs inside instagram.com so that requests are same-origin and carry the
  * session cookie the browser already has. Nothing here is sent anywhere

@@ -1,4 +1,4 @@
-# insta-followers-track — technical notes
+# Follower Tracker — technical notes
 
 Non-technical overview: [README.md](README.md).
 

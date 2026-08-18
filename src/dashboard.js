@@ -1,5 +1,5 @@
 /*
- * FollowLens - dashboard
+ * Follower Tracker - dashboard
  *
  * Reads what the content script collected out of local storage and derives
  * every view from set differences. No network access happens on this page.

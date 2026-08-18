@@ -20,11 +20,11 @@ const pkg = JSON.parse(
 
 const shared = {
   manifest_version: 3,
-  name: 'FollowLens',
+  name: 'Follower Tracker',
   version: pkg.version,
   description:
-    'Local follower / unfollower tracking for Instagram. No account limits, ' +
-    'no telemetry, no sign-in.',
+    'See who unfollowed you on Instagram. Free follower and unfollower ' +
+    'tracker - no account, no limit, no telemetry.',
   permissions: ['storage', 'unlimitedStorage', 'tabs'],
   host_permissions: ['*://*.instagram.com/*'],
   content_scripts: [
@@ -36,7 +36,7 @@ const shared = {
     }
   ],
   action: {
-    default_title: 'Open FollowLens dashboard',
+    default_title: 'Open Follower Tracker - see who unfollowed you',
     default_icon: { 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' }
   },
   icons: { 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' }

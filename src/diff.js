@@ -1,5 +1,5 @@
 /*
- * FollowLens - pure derivation logic
+ * Follower Tracker - pure derivation logic
  *
  * Deliberately free of DOM and extension APIs so it can be unit tested
  * directly under node. Everything the dashboard shows is a set difference
