@@ -159,6 +159,19 @@ Every step appends to an attach log, and the log is what the failure message
 contains. An error that only says "could not attach" is unactionable; one that
 says which of ping, injection or permission failed is a diagnosis.
 
+When attaching fails the message also leads with a cause, worked out from what
+the *running* extension reports rather than what `src/` declares:
+
+| Check | Meaning |
+| --- | --- |
+| `runtime.getManifest().permissions` lacks `scripting` | the extension was never reloaded after the rebuild — editing files on disk does not re-register a manifest |
+| manifest is current but `permissions.contains({origins})` is false | site access is restricted to on-click, which blocks declared content scripts *and* `executeScript` |
+| both fine | the content script is failing inside the page; its console will say why |
+
+The first is by far the most common, and it is invisible otherwise: the
+extensions page shows the extension as loaded and enabled, the source on disk
+is correct, and only `getManifest()` disagrees.
+
 `test/content-load.test.js` executes `settings.js` + `content.js` in a `vm`
 context with stubbed browser globals and asserts a listener is registered and
 answers `FL_PING`. It also asserts that the script still registers with

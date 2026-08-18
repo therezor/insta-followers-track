@@ -86,6 +86,62 @@ function note(text) {
 
 const reasonOf = (err) => err?.message || String(err);
 
+const INSTAGRAM_ORIGIN = '*://*.instagram.com/*';
+
+/**
+ * Distinguish the two reasons a content script never appears, using what the
+ * *running* extension reports rather than what the source declares.
+ *
+ * getManifest() is the load-bearing call: it returns the manifest the browser
+ * actually has, so if `scripting` is missing from it the extension was never
+ * reloaded after the rebuild - editing files on disk does not update a
+ * registered manifest. If it is present but the origin is not granted, the
+ * user has the extension restricted to on-click site access, which blocks
+ * declared content scripts and executeScript alike.
+ */
+async function diagnosePermissions() {
+  const manifest = api.runtime.getManifest?.() ?? {};
+  const declared = new Set(manifest.permissions || []);
+  const staleManifest = !declared.has('scripting');
+
+  let hostGranted = null; // null = could not determine
+  try {
+    hostGranted = await api.permissions.contains({ origins: [INSTAGRAM_ORIGIN] });
+  } catch (_) {
+    /* permissions API unavailable; leave undetermined */
+  }
+
+  return { staleManifest, hostGranted };
+}
+
+function attachAdvice({ staleManifest, hostGranted }) {
+  if (staleManifest) {
+    return (
+      'The extension is still running an older manifest - it has no ' +
+      '"scripting" permission, so it was never reloaded after the last ' +
+      'build. Open your extensions page and press Reload on Follower ' +
+      'Tracker. If that does not change this message, remove the extension ' +
+      'and load dist/chrome again.'
+    );
+  }
+
+  if (hostGranted === false) {
+    return (
+      'The extension is not allowed to access instagram.com, which stops ' +
+      'both its content script and injection. Open your extensions page, ' +
+      'find Follower Tracker, and set its site access to instagram.com (in ' +
+      'Chrome: Details -> Site access -> On all sites, or right-click the ' +
+      'toolbar icon -> This can read and change site data).'
+    );
+  }
+
+  return (
+    'The content script is not running in that tab and injection did not ' +
+    'recover it. Open the tab console on instagram.com - an error there ' +
+    'will name the cause.'
+  );
+}
+
 async function pingTab(tabId) {
   try {
     const res = await api.tabs.sendMessage(tabId, { type: 'FL_PING' });
@@ -206,11 +262,15 @@ async function ensureInstagramTab() {
   note('opened new tab ' + tab.id + ', status complete');
   if (await reachTab(tab.id)) return tab.id;
 
+  const advice = attachAdvice(await diagnosePermissions());
+
   // Loaded fine, but nothing is answering. That is the extension's own
   // problem, not the user's, so say what actually failed rather than telling
   // them to open a tab they can plainly see is already open.
   throw new Error(
     'instagram.com loaded, but the extension could not attach to it.\n\n' +
+      advice +
+      '\n\nWhat was tried:\n' +
       attachLog.map((line) => '- ' + line).join('\n')
   );
 }
