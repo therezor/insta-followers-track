@@ -25,8 +25,37 @@ const shared = {
   description:
     'See who unfollowed you on Instagram. Free follower and unfollower ' +
     'tracker - no account, no limit, no telemetry.',
-  permissions: ['storage', 'unlimitedStorage', 'tabs', 'scripting'],
-  host_permissions: ['*://*.instagram.com/*'],
+  permissions: [
+    'storage',
+    'unlimitedStorage',
+    'tabs',
+    'scripting',
+    // Sets Referer on profile-picture requests; see src/rules.json for why.
+    'declarativeNetRequestWithHostAccess'
+  ],
+  host_permissions: [
+    '*://*.instagram.com/*',
+    // Instagram's image CDNs. Reached only to display profile pictures.
+    '*://*.cdninstagram.com/*',
+    '*://*.fbcdn.net/*'
+  ],
+  /*
+   * One rule, in src/rules.json: set Referer to https://www.instagram.com/ on
+   * profile-picture requests to Instagram's CDNs.
+   *
+   * Those CDNs answer with 'Cross-Origin-Resource-Policy: same-origin', which
+   * stops any page but instagram.com from displaying the image. With that
+   * referer they answer 'cross-origin' plus 'Access-Control-Allow-Origin: *'.
+   * A page cannot set its own Referer, so it is set here.
+   *
+   * Nothing is added to the request - no cookies, no identifiers, no user
+   * data. It is the same header instagram.com sends for the same picture.
+   * The rule file takes no comments; the DNR rule schema rejects unknown
+   * keys, and a rejected file disables the whole ruleset.
+   */
+  declarative_net_request: {
+    rule_resources: [{ id: 'avatars', enabled: true, path: 'rules.json' }]
+  },
   content_scripts: [
     {
       matches: ['*://*.instagram.com/*'],

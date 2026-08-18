@@ -233,3 +233,49 @@ test('the active account can be switched without touching scan data', async () =
   assert.strictEqual(res.activeAccount, '111');
   assert.strictEqual(storage.data['acct:222'].latest.followers.length, 1);
 });
+
+test('the avatar rule file is a valid DNR ruleset', () => {
+  // Rules are validated by the browser at install time, and a rule the schema
+  // rejects disables the whole ruleset silently - the failure looks like
+  // "profile pictures just do not load", which is where this started.
+  const rules = JSON.parse(
+    fs.readFileSync(path.join(SRC, 'rules.json'), 'utf8')
+  );
+
+  assert.ok(Array.isArray(rules) && rules.length === 1);
+
+  const [rule] = rules;
+  assert.deepEqual(Object.keys(rule).sort(), ['action', 'condition', 'id', 'priority']);
+  assert.strictEqual(rule.action.type, 'modifyHeaders');
+
+  const [header] = rule.action.requestHeaders;
+  assert.strictEqual(header.header, 'referer');
+  assert.strictEqual(header.operation, 'set');
+  // The exact value the CDN checks for. Anything else - including no referer,
+  // and including https://instagram.com without the www - gets
+  // Cross-Origin-Resource-Policy: same-origin, which blocks the image.
+  assert.strictEqual(header.value, 'https://www.instagram.com/');
+
+  assert.deepEqual(rule.condition.resourceTypes, ['image']);
+  assert.deepEqual(rule.condition.requestDomains.sort(), ['cdninstagram.com', 'fbcdn.net']);
+});
+
+test('the manifest ships the ruleset and the hosts it needs', () => {
+  const build = fs.readFileSync(path.join(SRC, '..', 'build.mjs'), 'utf8');
+
+  // A rule that fires on a host the extension has no permission for is a
+  // no-op under declarativeNetRequestWithHostAccess.
+  assert.ok(build.includes("'*://*.cdninstagram.com/*'"), 'cdninstagram host missing');
+  assert.ok(build.includes("'*://*.fbcdn.net/*'"), 'fbcdn host missing');
+  assert.ok(build.includes('declarativeNetRequestWithHostAccess'), 'DNR permission missing');
+  assert.ok(build.includes("path: 'rules.json'"), 'ruleset not registered');
+});
+
+test('the dashboard does not suppress the referer on avatars', () => {
+  // referrerPolicy = 'no-referrer' guarantees the blocked CORP variant.
+  const source = fs.readFileSync(path.join(SRC, 'dashboard.js'), 'utf8');
+  assert.ok(
+    !/referrerPolicy\s*=\s*'no-referrer'/.test(source),
+    "no-referrer is back - profile pictures will be blocked by the CDN"
+  );
+});

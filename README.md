@@ -122,10 +122,10 @@ check that all of this is true.
 
 This is the part worth being precise about, so here it is in plain terms.
 
-**What the extension talks to:** Instagram, and nothing else. That's the same
-website your browser is already talking to when you scroll Instagram. It asks
-Instagram for your own follower list and for profile pictures, the same way the
-Instagram app does.
+**What the extension talks to:** Instagram, and nothing else — the website for
+your follower list, and Instagram's image servers for profile pictures. That's
+the same place your browser is already talking to when you scroll Instagram,
+and it asks for exactly what the Instagram app asks for.
 
 **What it sends to us:** nothing. There is no "us". There is no server behind
 this product, no account system, no database, no analytics company, no error

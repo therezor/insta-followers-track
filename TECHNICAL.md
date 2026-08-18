@@ -34,7 +34,7 @@ them. All extension API calls go through
 
 ```sh
 npm run build     # -> dist/firefox, dist/chrome, dist/safari (no npm install needed)
-npm test          # 43 unit tests: diff, pacing, content script, storage
+npm test          # 46 unit tests: diff, pacing, content script, storage
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
 ```
@@ -137,7 +137,7 @@ Verified so far: the diff logic, pacing-settings clamping, and the content
 script itself — it loads, answers a ping, and runs a complete scan against a
 stubbed Instagram, including pagination, cancellation, a logged-out session
 and profile-picture sanitising — and the per-account storage layout, including
-migration (43 unit tests);
+migration (46 unit tests);
 the dashboard and the toolbar popup rendering in a real Chrome tab against
 stubbed extension APIs — stats, grouped tabs, list rows, history, the Settings
 panel, and the popup in both its populated and first-run states, with no
@@ -214,6 +214,48 @@ is followed, both lists come back in order, a cancel mid-wait reports
 code, and non-https picture URLs are dropped. Until this existed the scan path
 had never run anywhere — every fix to it shipped on inspection alone.
 
+### Why profile pictures need a network rule
+
+Instagram's image CDNs answer a request for a profile picture with:
+
+```
+cross-origin-resource-policy: same-origin
+```
+
+which stops any page other than instagram.com from displaying it — including
+the dashboard, whose origin is `moz-extension://…` or `chrome-extension://…`.
+The same URL with `Referer: https://www.instagram.com/` answers:
+
+```
+cross-origin-resource-policy: cross-origin
+access-control-allow-origin: *
+```
+
+Measured, not assumed — and the header depends on that exact value. No
+referer, `https://example.com/`, the extension's own origin, and even
+`https://instagram.com/` without the `www` all return the blocking variant:
+
+```sh
+u='<a profile picture URL>'
+curl -sI "$u" | grep -i cross-origin
+curl -sI -H 'Referer: https://www.instagram.com/' "$u" | grep -i cross-origin
+```
+
+A page cannot set its own `Referer`, so `src/rules.json` sets it with a single
+`declarativeNetRequest` rule, scoped to image requests to those two domains.
+Nothing is added to the request — no cookies, no identifiers, no user data. It
+is the header instagram.com itself sends for the same picture.
+
+Two things this brought with it. `dashboard.js` used to set
+`img.referrerPolicy = 'no-referrer'`, which guaranteed the blocked variant;
+that is gone, and a test fails if it returns. And `rules.json` carries no
+comments: the rule schema rejects unknown keys, and a rejected file disables
+the whole ruleset silently — which looks exactly like "pictures do not load".
+
+Safari's `declarativeNetRequest` support does not include `modifyHeaders`, so
+pictures are expected to fall back to initials there. That fallback is the
+same one that covers expired URLs, so nothing else changes.
+
 ### Rate limiting
 
 Pacing is user-configurable from **Settings** in the dashboard, and every
@@ -286,8 +328,10 @@ just means it re-runs harmlessly.
 
 Permissions: `storage` and `unlimitedStorage` to keep scans; `tabs` to find
 your instagram.com tab and open the dashboard; `scripting` to attach the
-content script to a tab that predates the install; and host access to
-instagram.com only.
+content script to a tab that predates the install;
+`declarativeNetRequestWithHostAccess` for the one rule below; and host access
+to instagram.com and Instagram's image CDNs (`cdninstagram.com`, `fbcdn.net`),
+which are reached only to display profile pictures.
 
 `test/background-store.test.js` loads `background.js` in a `vm` over an
 in-memory `storage.local` and asserts the layout holds: legacy keys migrate

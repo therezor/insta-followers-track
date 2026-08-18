@@ -107,7 +107,13 @@ function avatar(user) {
   img.alt = '';
   img.loading = 'lazy';
   img.decoding = 'async';
-  img.referrerPolicy = 'no-referrer';
+  /*
+   * No referrerPolicy override. Instagram's CDN answers with
+   * 'Cross-Origin-Resource-Policy: same-origin' - which blocks the image -
+   * unless the request carries Referer: https://www.instagram.com/. Setting
+   * 'no-referrer' here guaranteed the blocked variant. The referer itself is
+   * set by the rule in rules.json, since a page cannot set its own.
+   */
   // Initials stay underneath and simply show through if the image never
   // arrives, so an expired URL degrades instead of leaving a blank circle.
   img.addEventListener('error', () => img.remove());
