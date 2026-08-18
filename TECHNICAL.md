@@ -19,7 +19,7 @@ the bundle.
 src/          shared source — identical in both browsers
   manifest is generated, not stored here
 build.mjs     emits dist/firefox and dist/chrome
-test/         unit tests for the diff logic and pacing settings
+test/         unit tests: diff logic, pacing settings, content-script load
 dist/         build output (gitignored)
 ```
 
@@ -32,7 +32,7 @@ them. All extension API calls go through
 
 ```sh
 npm run build     # -> dist/firefox, dist/chrome, dist/safari (no npm install needed)
-npm test          # 23 unit tests: diff logic + pacing settings
+npm test          # 26 unit tests: diff logic, pacing settings, content load
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
 ```
@@ -107,7 +107,8 @@ scans before they show anything.
 
 ### Not yet run end-to-end
 
-Verified so far: the diff logic and pacing-settings clamping (23 unit tests);
+Verified so far: the diff logic, pacing-settings clamping, and that the
+content script loads and answers a ping (26 unit tests);
 the whole dashboard rendering in a real Chrome tab against stubbed extension
 APIs — stats, grouped tabs, list rows, history, the Settings panel and the
 first-run panel, with no console errors; `web-ext lint` clean; and — probed
@@ -128,11 +129,13 @@ lifecycle are still unexercised. Smoke test:
 3. **Scan now** — watch the counter go past 50. That's the real check: it
    proves pagination works, not just the first page.
 4. Scan again later — New/Lost followers should populate.
-5. If a scan reports that it could not attach to instagram.com, open that
-   tab's console. `ReferenceError: FLSettings is not defined` means
-   `settings.js` did not load and the extension needs reloading; silence there
-   plus an error in the service-worker console (extensions page → *service
-   worker*) points at the tab plumbing instead.
+5. If a scan reports that it could not attach to instagram.com, the error
+   itself lists what was tried and what each step said — that list is the
+   diagnosis. `Cannot access contents of the page` means the extension's site
+   access is set to *on click*; `scripting.executeScript is unavailable` means
+   the `scripting` permission has not been granted and the extension needs a
+   full reload; `Receiving end does not exist` on every attempt means the
+   content script is not running, and that tab's console will say why.
 6. **Settings** → set *Pause after every* to `2`, Save, rescan. The progress
    line should switch to a cooling-down countdown, and **Cancel** should take
    effect within a second rather than at the end of the pause. At the default
@@ -142,6 +145,25 @@ lifecycle are still unexercised. Smoke test:
 If step 3 shows 0 accounts and no error, the REST response shape is wrong and
 `collectList()` in `src/content.js` needs adjusting to whatever
 `/api/v1/friendships/<uid>/followers/` actually returns.
+
+### Attaching to a tab
+
+`content_scripts` only covers pages loaded after the extension was installed
+or reloaded, so `background.js` cannot assume a content script is present. It
+pings each candidate tab four times, injects `settings.js` + `content.js` with
+`scripting.executeScript` if nothing answers, then pings four more times —
+`status === 'complete'` does not mean a `document_idle` script has run, and
+`executeScript` resolves before the script has finished executing.
+
+Every step appends to an attach log, and the log is what the failure message
+contains. An error that only says "could not attach" is unactionable; one that
+says which of ping, injection or permission failed is a diagnosis.
+
+`test/content-load.test.js` executes `settings.js` + `content.js` in a `vm`
+context with stubbed browser globals and asserts a listener is registered and
+answers `FL_PING`. It also asserts that the script still registers with
+`settings.js` absent — the regression that made a tab look permanently
+unreachable was a load-time reference above the listener registration.
 
 ### Rate limiting
 

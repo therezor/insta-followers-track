@@ -71,11 +71,29 @@ async function openDashboard() {
   return api.tabs.create({ url });
 }
 
+/*
+ * Every failure below is recorded rather than swallowed. When attaching fails
+ * the reason is the only thing that distinguishes "no content script there"
+ * from "the scripting API is missing" from "the page refused injection", and
+ * without it the error message can only guess.
+ */
+const attachLog = [];
+
+function note(text) {
+  attachLog.push(text);
+  if (attachLog.length > 12) attachLog.shift();
+}
+
+const reasonOf = (err) => err?.message || String(err);
+
 async function pingTab(tabId) {
   try {
     const res = await api.tabs.sendMessage(tabId, { type: 'FL_PING' });
-    return !!(res && res.ok);
-  } catch (_) {
+    if (res && res.ok) return true;
+    note('tab ' + tabId + ': ping answered with ' + JSON.stringify(res ?? null));
+    return false;
+  } catch (err) {
+    note('tab ' + tabId + ': ping failed - ' + reasonOf(err));
     return false;
   }
 }
@@ -109,24 +127,46 @@ async function waitForTabComplete(tabId, timeoutMs) {
  * FLSettings out of settings.js.
  */
 async function injectContentScript(tabId) {
-  if (!api.scripting?.executeScript) return false;
+  if (!api.scripting?.executeScript) {
+    note(
+      'scripting.executeScript is unavailable - the "scripting" permission is ' +
+        'probably not granted yet, which a full extension reload fixes'
+    );
+    return false;
+  }
+
   try {
     await api.scripting.executeScript({
       target: { tabId },
       files: CONTENT_FILES
     });
+    note('tab ' + tabId + ': injected ' + CONTENT_FILES.join(' + '));
     return true;
-  } catch (_) {
+  } catch (err) {
+    note('tab ' + tabId + ': injection failed - ' + reasonOf(err));
     return false;
   }
 }
 
-/** Ping, and if nobody answers, inject and ping again. */
+/**
+ * Ping, and if nobody answers, inject and ping again. Both phases get several
+ * attempts: `status === 'complete'` does not guarantee a document_idle content
+ * script has run yet, and injection returns before the script has executed.
+ */
 async function reachTab(tabId) {
-  if (await pingTab(tabId)) return true;
+  for (let i = 0; i < 4; i += 1) {
+    if (await pingTab(tabId)) return true;
+    await sleep(PING_INTERVAL_MS);
+  }
+
   if (!(await injectContentScript(tabId))) return false;
-  await sleep(PING_INTERVAL_MS);
-  return pingTab(tabId);
+
+  for (let i = 0; i < 4; i += 1) {
+    await sleep(PING_INTERVAL_MS);
+    if (await pingTab(tabId)) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -134,9 +174,13 @@ async function reachTab(tabId) {
  * The content script must be live there for the scan to run same-origin.
  */
 async function ensureInstagramTab() {
+  attachLog.length = 0;
+
   const tabs = await api.tabs.query({ url: '*://*.instagram.com/*' });
+  note('found ' + tabs.length + ' instagram.com tab(s)');
 
   for (const tab of tabs) {
+    note('trying existing tab ' + tab.id + ' (' + (tab.url || '') + ')');
     if (await reachTab(tab.id)) return tab.id;
   }
 
@@ -159,15 +203,15 @@ async function ensureInstagramTab() {
     );
   }
 
+  note('opened new tab ' + tab.id + ', status complete');
   if (await reachTab(tab.id)) return tab.id;
 
   // Loaded fine, but nothing is answering. That is the extension's own
-  // problem, not the user's, so say so rather than telling them to open a
-  // tab they can plainly see is already open.
+  // problem, not the user's, so say what actually failed rather than telling
+  // them to open a tab they can plainly see is already open.
   throw new Error(
-    'instagram.com loaded, but the extension could not attach to it. Reload ' +
-      'the extension on the extensions page, then try again. If it keeps ' +
-      'happening, the tab console will name the error.'
+    'instagram.com loaded, but the extension could not attach to it.\n\n' +
+      attachLog.map((line) => '- ' + line).join('\n')
   );
 }
 

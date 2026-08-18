@@ -99,7 +99,9 @@ h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
   border: 1px solid var(--line); background: var(--panel);
   display: flex; align-items: center; gap: 10px;
 }
-.banner.error { border-color: var(--danger); color: var(--danger); }
+.banner.error { border-color: var(--danger); color: var(--danger); align-items: flex-start; }
+/* Attach failures arrive as a multi-line diagnostic list. */
+#banner-text { white-space: pre-wrap; min-width: 0; }
 .banner.ok { border-color: var(--good); color: var(--good); }
 
 .progress {
