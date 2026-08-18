@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Follower Tracker</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="popup">
+  <!-- Tabler Icons (MIT), vendored inline. No xmlns: see dashboard.html. -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-refresh" viewBox="0 0 24 24">
+        <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/>
+        <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/>
+      </symbol>
+      <symbol id="i-dashboard" viewBox="0 0 24 24">
+        <path d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/>
+        <path d="M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/>
+        <path d="M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/>
+        <path d="M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/>
+      </symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24">
+        <path d="M5 7a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -10"/>
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 9v4"/>
+        <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/>
+        <path d="M12 16h.01"/>
+      </symbol>
+      <symbol id="i-user-search" viewBox="0 0 24 24">
+        <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/>
+        <path d="M6 21v-2a4 4 0 0 1 4 -4h1.5"/>
+        <path d="M15 18a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+        <path d="M20.2 20.2l1.8 1.8"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="phead">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false"><use href="#i-user-search"/></svg>
+    </span>
+    <div class="phead-text">
+      <strong>Follower Tracker</strong>
+      <span class="sub" id="p-profile">Not scanned yet</span>
+    </div>
+  </header>
+
+  <div id="p-error" class="pbanner" role="status" aria-live="polite" hidden>
+    <svg class="i" aria-hidden="true" focusable="false"><use href="#i-alert"/></svg>
+    <span id="p-error-text"></span>
+  </div>
+
+  <section id="p-progress" class="pprogress" role="status" aria-live="polite" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="pprogress-text">
+      <strong id="p-progress-note">Working</strong>
+      <span id="p-progress-count" class="muted"></span>
+    </div>
+  </section>
+
+  <section id="p-empty" class="pempty" hidden>
+    <p>No scan yet. Press <strong>Scan now</strong> with Instagram open, and
+      your numbers appear here.</p>
+  </section>
+
+  <section id="p-stats" class="pstats" hidden>
+    <div class="pstat">
+      <span class="n" id="p-followers">0</span>
+      <span class="k">Followers</span>
+    </div>
+    <div class="pstat">
+      <span class="n" id="p-following">0</span>
+      <span class="k">Following</span>
+    </div>
+    <div class="pstat">
+      <span class="n" id="p-lost">0</span>
+      <span class="k">Unfollowed you</span>
+    </div>
+    <div class="pstat">
+      <span class="n" id="p-nfb">0</span>
+      <span class="k">Don't follow back</span>
+    </div>
+  </section>
+
+  <footer class="pactions">
+    <button id="p-scan" class="btn primary" type="button">
+      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg>
+      <span id="p-scan-label">Scan now</span>
+    </button>
+    <button id="p-cancel" class="btn ghost" type="button" hidden>
+      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-stop"/></svg>
+      Stop
+    </button>
+    <button id="p-open" class="btn" type="button">
+      <svg class="i" aria-hidden="true" focusable="false"><use href="#i-dashboard"/></svg>
+      Dashboard
+    </button>
+  </footer>
+
+  <script src="settings.js"></script>
+  <script src="diff.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

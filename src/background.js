@@ -449,12 +449,24 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'FL_OPEN_DASHBOARD') {
+    openDashboard()
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: reasonOf(err) }));
+    return true;
+  }
+
   if (message.type === 'FL_GET_SCAN_STATE') {
     hydrateScanState().then(() => sendResponse({ ok: true, scanState }));
     return true;
   }
 });
 
+/*
+ * With a default_popup set this never fires, but a popup that fails to load
+ * falls back to the click, and it keeps the toolbar icon useful if the popup
+ * is ever removed.
+ */
 api.action.onClicked.addListener(() => {
   openDashboard();
 });

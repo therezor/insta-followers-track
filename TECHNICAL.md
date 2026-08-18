@@ -16,8 +16,10 @@ the bundle.
 ## Layout
 
 ```
-src/          shared source — identical in both browsers
+src/          shared source — identical in all three browsers
   manifest is generated, not stored here
+  popup.html    toolbar popup: summary, scan, open dashboard
+  theme.css     design tokens, linked by dashboard and popup alike
 build.mjs     emits dist/firefox and dist/chrome
 test/         unit tests: diff, pacing, content-script load and scan
 dist/         build output (gitignored)
@@ -113,6 +115,15 @@ scans before they show anything.
 - `diff.js` derives every view as a set difference. It is free of DOM and
   extension APIs so the logic that matters is unit-testable under node.
 - `dashboard.js` renders. This page makes no network requests at all.
+- `popup.js` is the toolbar popup: last-scan summary, a scan button with live
+  progress, and a button that opens the dashboard. It owns no state — the
+  popup is destroyed whenever it loses focus — so it reads `storage.local` on
+  open and asks the background for the running scan state, which is why a scan
+  started from the popup keeps going after the popup closes. It derives its
+  four numbers with the same `diff.js` the dashboard uses, so they cannot
+  disagree.
+- Setting `default_popup` means `action.onClicked` no longer fires; the
+  listener is kept as a fallback for a popup that fails to load.
 
 ### Not yet run end-to-end
 
@@ -120,9 +131,10 @@ Verified so far: the diff logic, pacing-settings clamping, and the content
 script itself — it loads, answers a ping, and runs a complete scan against a
 stubbed Instagram, including pagination, cancellation, a logged-out session
 and profile-picture sanitising (33 unit tests);
-the whole dashboard rendering in a real Chrome tab against stubbed extension
-APIs — stats, grouped tabs, list rows, history, the Settings panel and the
-first-run panel, with no console errors; `web-ext lint` clean; and — probed
+the dashboard and the toolbar popup rendering in a real Chrome tab against
+stubbed extension APIs — stats, grouped tabs, list rows, history, the Settings
+panel, and the popup in both its populated and first-run states, with no
+console errors; `web-ext lint` clean; and — probed
 live on
 instagram.com — that `ds_user_id` and `csrftoken` are readable from
 `document.cookie`, that `sessionid` is HttpOnly (so `credentials: 'include'`

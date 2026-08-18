@@ -1,33 +1,4 @@
-:root {
-  --bg: #ffffff;
-  --panel: #f6f7f9;
-  --panel-2: #eceef2;
-  --text: #14161a;
-  --muted: #646b76;
-  --line: #dfe2e8;
-  --accent: #2f6df6;
-  --accent-text: #ffffff;
-  --danger: #c8102e;
-  --good: #1a7f4b;
-  --warn: #a45b00;
-  --radius: 10px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;
-    --panel: #171a20;
-    --panel-2: #1e222a;
-    --text: #e8eaee;
-    --muted: #9aa2ae;
-    --line: #2a2f38;
-    --accent: #5b8cff;
-    --accent-text: #0f1115;
-    --danger: #ff6b7d;
-    --good: #4ecb8b;
-    --warn: #e0a458;
-  }
-}
+/* Dashboard styles. Tokens live in theme.css, linked first. */
 
 * { box-sizing: border-box; }
 

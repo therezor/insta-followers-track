@@ -36,7 +36,8 @@ const shared = {
     }
   ],
   action: {
-    default_title: 'Open Follower Tracker - see who unfollowed you',
+    default_title: 'Follower Tracker - see who unfollowed you',
+    default_popup: 'popup.html',
     default_icon: { 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' }
   },
   icons: { 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' }
