@@ -67,9 +67,26 @@ const shared = {
   action: {
     default_title: 'Follower Tracker - see who unfollowed you',
     default_popup: 'popup.html',
-    default_icon: { 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' }
+    // The toolbar draws at 16 and 32. Left to downscale a 48, the magnifier
+    // in the full mark blurs into the head; icon-16 and icon-32 are redrawn
+    // for those sizes.
+    default_icon: {
+      16: 'icons/icon-16.png',
+      32: 'icons/icon-32.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png'
+    }
   },
-  icons: { 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' }
+  // 32/64/128 are the sizes addons.mozilla.org asks for; 48 and 96 are what
+  // Firefox's own add-ons manager draws at 1x and 2x.
+  icons: {
+    16: 'icons/icon-16.png',
+    32: 'icons/icon-32.png',
+    48: 'icons/icon-48.png',
+    64: 'icons/icon-64.png',
+    96: 'icons/icon-96.png',
+    128: 'icons/icon-128.png'
+  }
 };
 
 const targets = {

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Follower Tracker">
+  <!--
+    Toolbar mark for 32px. The full logo in icon.svg keeps Tabler's original
+    stroke weights, which merge into a blur below about 40px; this redraws the
+    same idea - a person and a magnifier - with heavier strokes and more space
+    between the two shapes so both survive the downscale.
+  -->
+  <defs>
+    <linearGradient id="ft32" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f6df6"/>
+      <stop offset="1" stop-color="#9b5bff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="26" fill="url(#ft32)"/>
+
+  <g transform="translate(18 18) scale(3.833)"
+     fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="7.6" cy="6.4" r="3.6" fill="#ffffff" stroke="none"/>
+    <path d="M1.9 17.6c0-3.6 2.6-5.9 5.7-5.9 1 0 1.9 .2 2.7 .6" stroke-width="2.9"/>
+    <circle cx="15.2" cy="15.2" r="4.1" stroke-width="2.9"/>
+    <path d="M18.3 18.3 L21 21" stroke-width="3.2"/>
+  </g>
+</svg>

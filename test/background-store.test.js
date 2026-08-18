@@ -279,3 +279,33 @@ test('the dashboard does not suppress the referer on avatars', () => {
     "no-referrer is back - profile pictures will be blocked by the CDN"
   );
 });
+
+test('every icon the manifest declares exists and is the right size', () => {
+  // A declared icon that is missing or the wrong size shows as a blank square
+  // in the toolbar and can fail store review, with no build error to catch it.
+  const build = fs.readFileSync(path.join(SRC, '..', 'build.mjs'), 'utf8');
+  const declared = new Set(
+    [...build.matchAll(/'icons\/(icon-\d+\.png)'/g)].map((m) => m[1])
+  );
+
+  assert.ok(declared.size >= 6, 'expected the full icon ladder, got ' + declared.size);
+
+  for (const file of declared) {
+    const full = path.join(SRC, 'icons', file);
+    assert.ok(fs.existsSync(full), 'missing icon: ' + file);
+
+    // PNG header: width and height are big-endian uint32 at bytes 16 and 20.
+    const buf = fs.readFileSync(full);
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    const expected = Number(file.match(/(\d+)/)[1]);
+
+    assert.strictEqual(width, expected, file + ' is ' + width + 'px wide');
+    assert.strictEqual(height, expected, file + ' is ' + height + 'px tall');
+  }
+
+  // 32, 64 and 128 are the sizes addons.mozilla.org asks for.
+  for (const size of [32, 64, 128]) {
+    assert.ok(declared.has('icon-' + size + '.png'), 'AMO needs ' + size + 'px');
+  }
+});

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Follower Tracker">
+  <!--
+    Toolbar mark for 16px. At sixteen pixels the magnifier cannot survive at
+    any stroke weight - it merges with the head and the result reads as noise.
+    What is left is the silhouette the larger marks are built around, which
+    stays unmistakable at that size.
+  -->
+  <defs>
+    <linearGradient id="ft16" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f6df6"/>
+      <stop offset="1" stop-color="#9b5bff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="26" fill="url(#ft16)"/>
+
+  <g transform="translate(18 18) scale(3.833)" fill="#ffffff">
+    <circle cx="12" cy="8" r="4.4"/>
+    <path d="M3.8 21.4c0-4.7 3.7-7.7 8.2-7.7s8.2 3 8.2 7.7z"/>
+  </g>
+</svg>
