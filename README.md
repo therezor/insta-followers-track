@@ -39,6 +39,9 @@
 That's the question this answers. Press **Scan now**, and you get a plain list
 of every account that unfollowed you since your last check.
 
+**No sign-up. No password. No monthly fee. Nothing leaves your computer.
+It is open source.**
+
 > **Early build.** The reports are tested. The part that reads your follower
 > list has not been run against a live Instagram account yet.
 
