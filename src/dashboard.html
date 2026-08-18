@@ -16,12 +16,52 @@
     </div>
 
     <div class="actions">
+      <button id="settings-btn" class="btn ghost">Settings</button>
       <button id="scan-btn" class="btn primary">Scan now</button>
       <button id="cancel-btn" class="btn ghost" hidden>Cancel</button>
     </div>
   </header>
 
   <div id="banner" class="banner" hidden></div>
+
+  <section id="settings-panel" class="settings" hidden>
+    <h2>Scan speed</h2>
+    <p class="muted">Slower scans are less likely to be rate limited by
+      Instagram. These apply to the next scan you start.</p>
+
+    <div class="setting">
+      <label for="min-delay">Random interval between the requests for data (seconds)</label>
+      <div class="range-row">
+        <input id="min-delay" type="number" min="0" max="300" step="0.5" inputmode="decimal">
+        <span class="tilde">~</span>
+        <input id="max-delay" type="number" min="0" max="300" step="0.5" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="setting">
+      <label for="pause-every">Pause after every this many requests <span class="muted">(0 = never pause)</span></label>
+      <div class="range-row">
+        <input id="pause-every" type="number" min="0" max="10000" step="1" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="setting">
+      <label for="pause-min">Wait this long during a pause (minutes)</label>
+      <div class="range-row">
+        <input id="pause-min" type="number" min="0" max="120" step="0.5" inputmode="decimal">
+        <span class="tilde">~</span>
+        <input id="pause-max" type="number" min="0" max="120" step="0.5" inputmode="decimal">
+      </div>
+    </div>
+
+    <p id="settings-estimate" class="muted"></p>
+
+    <div class="settings-actions">
+      <button id="settings-save" class="btn primary small">Save</button>
+      <button id="settings-reset" class="btn ghost small">Reset to defaults</button>
+      <span id="settings-status" class="muted"></span>
+    </div>
+  </section>
 
   <section id="progress" class="progress" hidden>
     <div class="spinner" aria-hidden="true"></div>
@@ -57,6 +97,7 @@
     <button id="wipe-btn" class="btn danger small">Delete all stored data</button>
   </footer>
 
+  <script src="settings.js"></script>
   <script src="diff.js"></script>
   <script src="dashboard.js"></script>
 </body>

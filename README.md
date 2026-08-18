@@ -37,6 +37,7 @@ No sign-up. No password. No monthly fee. Nothing leaves your computer.
 | **New followers** | Accounts that arrived since your last scan |
 | **Recently followed / unfollowed** | Your own follow activity |
 | **History** | Every scan, with the gain or loss |
+| **Scan speed settings** | Set the gap between requests and how often it pauses |
 
 Search, sort, and export any list to a spreadsheet (CSV).
 
@@ -76,8 +77,9 @@ first — and loads the result into Chrome or Firefox. Takes about a minute:
 ## Good to know
 
 Instagram doesn't officially allow tools like this — true of every follower
-tracker, paid ones included. Scans run slowly on purpose (10–15 minutes for a
-large account). Scan occasionally, not constantly.
+tracker, paid ones included. Scans run slowly on purpose — about 25 minutes
+for a 10,000-follower account — and you can make them slower or faster under
+**Settings**. Scan occasionally, not constantly.
 
 ## How it works
 

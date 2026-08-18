@@ -30,7 +30,7 @@ const shared = {
   content_scripts: [
     {
       matches: ['*://*.instagram.com/*'],
-      js: ['content.js'],
+      js: ['settings.js', 'content.js'],
       run_at: 'document_idle',
       all_frames: false
     }

@@ -18,7 +18,8 @@ const state = {
   directory: {},
   activeTab: 'not_following_back',
   query: '',
-  sort: 'found'
+  sort: 'found',
+  settings: FLSettings.DEFAULTS
 };
 
 const TABS = [
@@ -383,7 +384,8 @@ async function loadStore() {
     'profile',
     'latest',
     'snapshots',
-    'directory'
+    'directory',
+    'settings'
   ]);
 
   state.profile = store.profile ?? null;
@@ -391,8 +393,66 @@ async function loadStore() {
   state.snapshots = Array.isArray(store.snapshots) ? store.snapshots : [];
   state.directory =
     store.directory && typeof store.directory === 'object' ? store.directory : {};
+  state.settings = FLSettings.normalizeSettings(store.settings);
 
+  fillSettingsForm(state.settings);
   render();
+}
+
+// ---------------------------------------------------------------- settings
+
+const SETTING_FIELDS = {
+  minDelaySec: '#min-delay',
+  maxDelaySec: '#max-delay',
+  pauseEvery: '#pause-every',
+  pauseMinMin: '#pause-min',
+  pauseMaxMin: '#pause-max'
+};
+
+function fillSettingsForm(settings) {
+  for (const [key, sel] of Object.entries(SETTING_FIELDS)) {
+    $(sel).value = String(settings[key]);
+  }
+  renderEstimate(settings);
+}
+
+function readSettingsForm() {
+  const raw = {};
+  for (const [key, sel] of Object.entries(SETTING_FIELDS)) {
+    raw[key] = $(sel).value;
+  }
+  return FLSettings.normalizeSettings(raw);
+}
+
+/**
+ * Show what the current numbers cost in wall-clock time, using the size of
+ * the last scan so the figure means something to this account.
+ */
+function renderEstimate(settings) {
+  const accounts =
+    (state.latest?.followers?.length ?? 0) + (state.latest?.following?.length ?? 0);
+  const sample = accounts > 0 ? accounts : 10000;
+  const minutes = FLSettings.estimateMinutes(settings, sample);
+  const label = accounts > 0 ? 'your last scan size' : 'a 10,000-account example';
+
+  $('#settings-estimate').textContent =
+    'Estimated scan time for ' +
+    label +
+    ' (' +
+    fmt(sample) +
+    ' accounts): about ' +
+    (minutes < 1 ? 'under a minute' : Math.round(minutes) + ' minutes') +
+    '.';
+}
+
+function setSettingsStatus(text) {
+  $('#settings-status').textContent = text || '';
+}
+
+async function saveSettings(settings) {
+  state.settings = settings;
+  fillSettingsForm(settings);
+  await api.storage.local.set({ settings });
 }
 
 async function startScan() {
@@ -452,12 +512,42 @@ $('#sort').addEventListener('change', (e) => {
 
 $('#export-btn').addEventListener('click', exportCsv);
 
+$('#settings-btn').addEventListener('click', () => {
+  const panel = $('#settings-panel');
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) {
+    fillSettingsForm(state.settings);
+    setSettingsStatus('');
+  }
+});
+
+$('#settings-save').addEventListener('click', async () => {
+  const settings = readSettingsForm();
+  await saveSettings(settings);
+  setSettingsStatus('Saved. Applies to the next scan.');
+});
+
+$('#settings-reset').addEventListener('click', async () => {
+  await saveSettings({ ...FLSettings.DEFAULTS });
+  setSettingsStatus('Reset to defaults.');
+});
+
+for (const sel of Object.values(SETTING_FIELDS)) {
+  $(sel).addEventListener('input', () => {
+    renderEstimate(readSettingsForm());
+    setSettingsStatus('Unsaved changes.');
+  });
+}
+
 $('#wipe-btn').addEventListener('click', async () => {
   await api.storage.local.clear();
   state.profile = null;
   state.latest = null;
   state.snapshots = [];
   state.directory = {};
+  state.settings = FLSettings.DEFAULTS;
+  fillSettingsForm(state.settings);
+  setSettingsStatus('');
   showBanner('All stored data deleted.', 'ok');
   render();
 });

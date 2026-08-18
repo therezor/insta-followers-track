@@ -19,7 +19,7 @@ the bundle.
 src/          shared source — identical in both browsers
   manifest is generated, not stored here
 build.mjs     emits dist/firefox and dist/chrome
-test/         unit tests for the diff logic
+test/         unit tests for the diff logic and pacing settings
 dist/         build output (gitignored)
 ```
 
@@ -30,7 +30,7 @@ The two browsers differ only in the manifest: Firefox gets an event page
 
 ```sh
 npm run build     # -> dist/firefox, dist/chrome (no npm install needed)
-npm test          # 10 unit tests over the diff logic
+npm test          # 22 unit tests: diff logic + pacing settings
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
 ```
@@ -80,7 +80,8 @@ scans before they show anything.
 
 ### Not yet run end-to-end
 
-Verified so far: the diff logic (10 unit tests), the dashboard rendering
+Verified so far: the diff logic and pacing settings (22 unit tests), the
+dashboard rendering
 (against stubbed data), `web-ext lint` clean, and — probed live on
 instagram.com — that `ds_user_id` and `csrftoken` are readable from
 `document.cookie`, that `sessionid` is HttpOnly (so `credentials: 'include'`
@@ -103,9 +104,33 @@ If step 3 shows 0 accounts and no error, the REST response shape is wrong and
 
 ### Rate limiting
 
-Requests are spaced 2–4 s apart with jitter. On HTTP 429 the scan backs off
-60 s and retries up to three times before stopping with a clear message. A
-10,000-follower account takes roughly 10–15 minutes.
+Pacing is user-configurable from **Settings** in the dashboard, and every
+request in a scan goes through it — profile lookup, followers, and following
+share one counter, because Instagram rate limits the session, not the list.
+
+| Setting | Default | Range |
+| --- | --- | --- |
+| Random interval between requests | 2 – 12 s | 0 – 300 s |
+| Pause after every N requests | 200 (0 disables) | 0 – 10,000 |
+| Pause length | 1 – 3 min | 0 – 120 min |
+
+Both ranges are sampled uniformly per request, so the traffic has no fixed
+period. At the defaults a 10,000-follower account is 200 requests and takes
+roughly 25 minutes; the Settings panel estimates this live from your last
+scan size.
+
+Independently of these settings, HTTP 429 backs the scan off 60 s and retries
+up to three times before stopping with a clear message.
+
+`src/settings.js` is pure — no DOM, no extension APIs — so the clamping is
+unit-tested. It normalises **on read as well as on write**: a stored range
+with `max < min` would otherwise yield a negative delay, which sleeps for
+zero and silently removes the pacing entirely. Inverted ranges collapse to a
+fixed value rather than being rejected.
+
+Long pauses are waited out in one-second ticks, so **Cancel** takes effect
+immediately instead of after the pause expires, and the progress line shows a
+live countdown.
 
 The pacing is deliberate: hammering these endpoints is the fastest way to get
 rate-limited or checkpointed, and a scan that dies halfway looks exactly like
@@ -119,10 +144,11 @@ real follower loss.
 | `latest` | Full follower/following lists from the most recent scan |
 | `snapshots` | Up to 60 timestamped scans, ids only |
 | `directory` | id → name/flags, so accounts that leave still render properly |
+| `settings` | Your scan pacing settings |
 
 `unlimitedStorage` is requested because a large account across 60 snapshots
 exceeds the default quota. **Delete all stored data** in the footer wipes
-everything.
+everything, including your pacing settings, which return to defaults.
 
 ## Privacy
 

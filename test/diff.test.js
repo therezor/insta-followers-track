@@ -1,4 +1,4 @@
-/* Unit tests for the pure derivation logic. Run: node --test test/ */
+/* Unit tests for the pure derivation logic. Run: npm test */
 
 const test = require('node:test');
 const assert = require('node:assert');

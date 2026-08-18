@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test test/diff.test.js",
+    "test": "node --test test/*.test.js",
     "lint": "npm run build && web-ext lint --source-dir dist/firefox",
     "package": "npm run build && web-ext build --source-dir dist/firefox --artifacts-dir dist --overwrite-dest",
     "dev": "npm run build && web-ext run --source-dir dist/firefox"

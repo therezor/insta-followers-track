@@ -165,3 +165,30 @@ h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
 .foot p { color: var(--muted); font-size: 12px; margin: 0; max-width: 620px; }
+
+/* ------------------------------------------------------------- settings */
+
+.settings {
+  margin: 16px 0 8px; padding: 16px 18px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.settings h2 { margin: 0 0 4px; font-size: 15px; }
+.settings > p.muted { margin: 0 0 16px; font-size: 13px; max-width: 620px; }
+.setting { margin-bottom: 14px; }
+.setting label {
+  display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;
+}
+.setting label .muted { font-weight: 400; }
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row input[type='number'] {
+  width: 96px; padding: 7px 10px; font: inherit; font-size: 13px;
+  color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.range-row .tilde { color: var(--muted); }
+.settings-actions {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+#settings-estimate { margin: 4px 0 0; font-size: 13px; }

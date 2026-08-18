@@ -16,21 +16,85 @@
 
   const DEFAULT_APP_ID = '936619743392459';
   const PAGE_SIZE = 50;
-  const MIN_DELAY_MS = 2000;
-  const MAX_DELAY_MS = 4000;
   const MAX_PAGES = 4000;          // ~200k accounts, a hard runaway guard
   const RATE_LIMIT_BACKOFF_MS = 60000;
   const MAX_RETRIES = 3;
+  const TICK_MS = 1000;            // granularity of interruptible waits
 
   let scanning = false;
   let cancelRequested = false;
+  let settings = FLSettings.DEFAULTS;
 
   // ---------------------------------------------------------------- helpers
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const jitteredDelay = () =>
-    MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS);
+  /**
+   * Wait in one-second ticks so a cancel during a three-minute pause is acted
+   * on immediately rather than after the pause expires. `onTick` receives the
+   * seconds still to go, for the progress line.
+   */
+  async function waitFor(ms, onTick) {
+    const until = Date.now() + ms;
+    for (;;) {
+      const left = until - Date.now();
+      if (left <= 0) return;
+      if (cancelRequested) throw new ScanError('Scan cancelled.', 'cancelled');
+      if (onTick) onTick(Math.ceil(left / 1000));
+      await sleep(Math.min(TICK_MS, left));
+    }
+  }
+
+  /**
+   * Paces every request to Instagram. Both the gap between requests and the
+   * periodic long pause come from user settings; the counter spans the whole
+   * scan, not one list, because Instagram rate limits the session.
+   */
+  const pacer = {
+    completed: 0,
+
+    async beforeRequest() {
+      if (this.completed === 0) return;
+
+      if (FLSettings.shouldLongPause(settings, this.completed)) {
+        const ms = FLSettings.longPauseMs(settings);
+        await waitFor(ms, (secondsLeft) =>
+          broadcast({
+            type: 'FL_PROGRESS',
+            phase: 'waiting',
+            note:
+              'Cooling down after ' +
+              this.completed +
+              ' requests - resuming in ' +
+              formatCountdown(secondsLeft)
+          })
+        );
+        return;
+      }
+
+      await waitFor(FLSettings.requestDelayMs(settings));
+    },
+
+    afterRequest() {
+      this.completed += 1;
+    }
+  };
+
+  function formatCountdown(totalSeconds) {
+    if (totalSeconds < 60) return totalSeconds + 's';
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return m + 'm ' + String(s).padStart(2, '0') + 's';
+  }
+
+  async function loadSettings() {
+    try {
+      const store = await api.storage.local.get('settings');
+      settings = FLSettings.normalizeSettings(store?.settings);
+    } catch (_) {
+      settings = FLSettings.DEFAULTS;
+    }
+  }
 
   function readCookie(name) {
     const match = document.cookie.match(
@@ -81,6 +145,8 @@
 
   async function igFetch(url, appId, csrfToken) {
     let attempt = 0;
+
+    await pacer.beforeRequest();
 
     for (;;) {
       if (cancelRequested) throw new ScanError('Scan cancelled.', 'cancelled');
@@ -169,6 +235,7 @@
         );
       }
 
+      pacer.afterRequest();
       return json;
     }
   }
@@ -217,8 +284,6 @@
 
       maxId = json.next_max_id ?? null;
       if (!maxId || users.length === 0 || page >= MAX_PAGES) break;
-
-      await sleep(jitteredDelay());
     }
 
     return collected;
@@ -253,6 +318,9 @@
   // ----------------------------------------------------------------- driver
 
   async function runScan() {
+    await loadSettings();
+    pacer.completed = 0;
+
     const appId = findAppId();
     const csrfToken = readCookie('csrftoken');
 
@@ -279,8 +347,6 @@
           note: 'Collecting followers'
         })
     );
-
-    await sleep(jitteredDelay());
 
     broadcast({
       type: 'FL_PROGRESS',
