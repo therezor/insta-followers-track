@@ -66,8 +66,8 @@ the exact commands to verify it yourself are in
 
 1. **It needs a build step first.** This repository holds the source code, not
    a ready-to-click download. Anyone technical can produce an installable
-   version in about a minute — the instructions are in
-   [TECHNICAL.md](TECHNICAL.md).
+   version in about a minute — it is a single command, with nothing to
+   install first. The instructions are in [TECHNICAL.md](TECHNICAL.md).
 2. **Instagram doesn't officially allow tools like this.** Automatically
    reading your own follower list is against Instagram's terms of service —
    that's true of every product in this category, paid ones included. The

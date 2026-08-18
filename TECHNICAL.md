@@ -29,7 +29,7 @@ The two browsers differ only in the manifest: Firefox gets an event page
 `globalThis.browser ?? globalThis.chrome`, so the logic is byte-identical.
 
 ```sh
-npm run build     # -> dist/firefox, dist/chrome
+npm run build     # -> dist/firefox, dist/chrome (no npm install needed)
 npm test          # 10 unit tests over the diff logic
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
