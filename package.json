@@ -1,10 +1,11 @@
 {
   "name": "insta-followers-track",
   "version": "1.0.0",
-  "description": "Follower Tracker - see who unfollowed you on Instagram. Free, local, no telemetry. Firefox and Chrome.",
+  "description": "Follower Tracker - see who unfollowed you on Instagram. Free, local, no telemetry. Chrome, Firefox and Safari.",
   "private": true,
   "scripts": {
     "build": "node build.mjs",
+    "safari": "npm run build && xcrun safari-web-extension-converter dist/safari --project-location dist/safari-xcode --app-name \"Follower Tracker\" --bundle-identifier digital.arrows.followertracker --macos-only --no-open --no-prompt",
     "test": "node --test test/*.test.js",
     "lint": "npm run build && web-ext lint --source-dir dist/firefox",
     "package": "npm run build && web-ext build --source-dir dist/firefox --artifacts-dir dist --overwrite-dest",

@@ -60,6 +60,20 @@ const targets = {
     ...shared,
     background: { service_worker: 'background.js' },
     minimum_chrome_version: '110'
+  },
+  /*
+   * Safari runs the same MV3 bundle, but it cannot load an unpacked folder:
+   * the output here is the input to `xcrun safari-web-extension-converter`,
+   * which wraps it in an Xcode app project. Service workers need Safari 16.4,
+   * hence the floor. No minimum_chrome_version, and no gecko block - Safari
+   * rejects settings addressed to another browser.
+   */
+  safari: {
+    ...shared,
+    browser_specific_settings: {
+      safari: { strict_min_version: '16.4' }
+    },
+    background: { service_worker: 'background.js' }
   }
 };
 

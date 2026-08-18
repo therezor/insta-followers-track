@@ -9,7 +9,8 @@ const u = (pk, username, full_name = '') => ({
   username,
   full_name,
   is_private: false,
-  is_verified: false
+  is_verified: false,
+  profile_pic_url: 'https://cdn.example/' + pk + '.jpg'
 });
 
 const names = (list) => list.map((x) => x.username).sort();
@@ -121,4 +122,27 @@ test('scale: 50k followers diff correctly and stay ordered', () => {
 
   assert.strictEqual(fans.length, 25000);
   assert.strictEqual(fans[0].username, 'user25000'); // scan order preserved
+});
+
+
+test('resolved users keep their picture so change lists render avatars', () => {
+  // Every "since last scan" list goes through resolve(); dropping a field
+  // here silently degrades those lists only, which is easy to miss.
+  const directory = {
+    '7': {
+      username: 'gone',
+      full_name: 'Gone',
+      is_private: false,
+      is_verified: false,
+      profile_pic_url: 'https://cdn.example/7.jpg'
+    }
+  };
+
+  assert.strictEqual(
+    FLDiff.resolve(directory, '7').profile_pic_url,
+    'https://cdn.example/7.jpg'
+  );
+  // An id the directory has never seen must not throw or invent a URL.
+  assert.strictEqual(FLDiff.resolve(directory, '404').profile_pic_url, '');
+  assert.strictEqual(FLDiff.resolve(undefined, '7').profile_pic_url, '');
 });

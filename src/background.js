@@ -118,7 +118,11 @@ function buildDirectory(existing, users) {
       username: u.username,
       full_name: u.full_name,
       is_private: u.is_private,
-      is_verified: u.is_verified
+      is_verified: u.is_verified,
+      // Instagram's CDN URLs are signed and expire, so a directory entry for
+      // an account that has since left will usually 404. The dashboard falls
+      // back to initials when the image fails, which is that case.
+      profile_pic_url: u.profile_pic_url || ''
     };
   }
   return directory;

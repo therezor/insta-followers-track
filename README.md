@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>See who unfollowed you on Instagram.</b><br>
-  A free Instagram follower tracker for Chrome and Firefox.
+  A free Instagram follower tracker for Chrome, Firefox and Safari.
 </p>
 
 <p align="center">
@@ -27,8 +27,8 @@
 
 > ### 📡 It sends nothing about you to anyone. No telemetry, ever.
 > No analytics, no tracking, no "anonymous usage stats", no crash reports, no
-> ads. Nobody — including the people who wrote this — can see that you use it
-> or what you looked at.
+> ads. It talks to Instagram and to nothing else. Nobody — including the
+> people who wrote this — can see that you use it or what you looked at.
 
 > ### 💻 Your follower lists stay on your own computer.
 > They are saved in your browser, on your machine, and never uploaded. There
@@ -83,9 +83,10 @@ check that all of this is true.
 
 This is the part worth being precise about, so here it is in plain terms.
 
-**What the extension talks to:** instagram.com, and nothing else. That's the
-same website your browser is already talking to when you scroll Instagram. It
-asks Instagram for your own follower list, the same way the Instagram app does.
+**What the extension talks to:** Instagram, and nothing else. That's the same
+website your browser is already talking to when you scroll Instagram. It asks
+Instagram for your own follower list and for profile pictures, the same way the
+Instagram app does.
 
 **What it sends to us:** nothing. There is no "us". There is no server behind
 this product, no account system, no database, no analytics company, no error
@@ -95,10 +96,9 @@ reporting service. Not "we anonymise it" — there is nowhere for it to go.
 computer, like a bookmark. They are never uploaded anywhere. **Delete all
 stored data** in the footer erases them immediately and completely.
 
-**What it does not load:** no outside fonts, scripts, images, or ads. It even
-skips downloading profile pictures on purpose — showing initials instead —
-because loading an avatar would tell Instagram's servers which profiles you
-were looking at in your own dashboard.
+**What it does not load:** no outside fonts, scripts, or ads, and nothing at
+all from any company other than Instagram. There are no third parties in this
+product to load anything from.
 
 **About the Firefox version.** Mozilla makes every add-on state, in writing,
 what personal data it collects, and shows that to you before you install.
@@ -111,9 +111,10 @@ commands to check it yourself are in [TECHNICAL.md](TECHNICAL.md).
 ## Two things to know before you use it
 
 1. **It needs one build step.** This repository holds the source code, not a
-   ready-to-click download. Anyone technical can produce an installable
-   version in about a minute — a single command, with nothing to install
-   first. Instructions: [TECHNICAL.md](TECHNICAL.md).
+   ready-to-click download. For Chrome and Firefox anyone technical can produce
+   an installable version in about a minute — a single command, with nothing to
+   install first. Safari is more work: Apple requires every Safari extension to
+   be wrapped in an app with Xcode. Instructions: [TECHNICAL.md](TECHNICAL.md).
 2. **Instagram doesn't officially allow tools like this.** Automatically
    reading your own follower list is against Instagram's terms of service —
    true of every follower tracker, paid ones included. Scans run slowly on

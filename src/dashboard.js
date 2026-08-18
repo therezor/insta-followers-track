@@ -83,6 +83,38 @@ function initials(user) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Profile picture with an initials fallback. Instagram signs and expires these
+ * CDN URLs, so a stored one for an account from an older scan will often 404 -
+ * that is the case `error` handles, not an exceptional one.
+ */
+function avatar(user) {
+  const el = document.createElement('div');
+  el.className = 'avatar';
+
+  const fallback = document.createElement('span');
+  fallback.className = 'avatar-initials';
+  fallback.textContent = initials(user);
+  el.appendChild(fallback);
+
+  const src = user.profile_pic_url;
+  if (typeof src !== 'string' || !src.startsWith('https://')) return el;
+
+  const img = document.createElement('img');
+  img.className = 'avatar-img';
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.referrerPolicy = 'no-referrer';
+  // Initials stay underneath and simply show through if the image never
+  // arrives, so an expired URL degrades instead of leaving a blank circle.
+  img.addEventListener('error', () => img.remove());
+  img.src = src;
+  el.appendChild(img);
+
+  return el;
+}
+
 function emptyState(text) {
   const el = document.createElement('div');
   el.className = 'empty';
@@ -254,10 +286,7 @@ function userRow(user) {
   const row = document.createElement('div');
   row.className = 'row';
 
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar';
-  avatar.textContent = initials(user);
-  row.appendChild(avatar);
+  row.appendChild(avatar(user));
 
   const who = document.createElement('div');
   who.className = 'who';

@@ -29,7 +29,8 @@
       username: known?.username || '',
       full_name: known?.full_name || '',
       is_private: !!known?.is_private,
-      is_verified: !!known?.is_verified
+      is_verified: !!known?.is_verified,
+      profile_pic_url: known?.profile_pic_url || ''
     };
   }
 

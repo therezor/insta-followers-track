@@ -244,13 +244,29 @@
     }
   }
 
+  /**
+   * Only https URLs are kept. The value comes straight off Instagram's
+   * response, so it is treated as untrusted input rather than piped into an
+   * <img src> unchecked.
+   */
+  function safePicUrl(value) {
+    if (typeof value !== 'string' || value.length > 2048) return '';
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' ? url.href : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   function compactUser(u) {
     return {
       pk: String(u.pk ?? u.id ?? ''),
       username: u.username || '',
       full_name: u.full_name || '',
       is_private: !!u.is_private,
-      is_verified: !!u.is_verified
+      is_verified: !!u.is_verified,
+      profile_pic_url: safePicUrl(u.profile_pic_url)
     };
   }
 

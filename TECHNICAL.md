@@ -2,9 +2,9 @@
 
 Non-technical overview: [README.md](README.md).
 
-Follower and unfollower tracking for Instagram, as a **Firefox and Chrome**
-extension. Everything runs locally: no account, no sign-in, no follower cap,
-no subscription, and no telemetry.
+Follower and unfollower tracking for Instagram, as a **Chrome, Firefox and
+Safari** extension. Everything runs locally: no account, no sign-in, no
+follower cap, no subscription, and no telemetry.
 
 Written from scratch. It is not a patched build of anything — see
 [ANALYSIS.md](ANALYSIS.md) for a teardown of the commercial
@@ -23,14 +23,16 @@ test/         unit tests for the diff logic and pacing settings
 dist/         build output (gitignored)
 ```
 
-The two browsers differ only in the manifest: Firefox gets an event page
-(`background.scripts`) plus `browser_specific_settings`; Chrome gets an MV3
-`service_worker`. All extension API calls go through
+The three targets differ only in the manifest: Firefox gets an event page
+(`background.scripts`) plus a gecko `browser_specific_settings`; Chrome gets an
+MV3 `service_worker` and a `minimum_chrome_version`; Safari gets the same
+service worker with a `safari` block pinning 16.4, the first version to run
+them. All extension API calls go through
 `globalThis.browser ?? globalThis.chrome`, so the logic is byte-identical.
 
 ```sh
-npm run build     # -> dist/firefox, dist/chrome (no npm install needed)
-npm test          # 22 unit tests: diff logic + pacing settings
+npm run build     # -> dist/firefox, dist/chrome, dist/safari (no npm install needed)
+npm test          # 23 unit tests: diff logic + pacing settings
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
 ```
@@ -42,6 +44,25 @@ Add-on…* → pick `dist/firefox/manifest.json`. Lasts until restart.
 
 **Chrome** — `chrome://extensions` → enable *Developer mode* → *Load unpacked*
 → pick `dist/chrome`. Persists.
+
+**Safari** — Safari cannot load an unpacked folder; the extension has to be
+wrapped in a macOS app first. With Xcode installed:
+
+```sh
+npm run safari     # build, then xcrun safari-web-extension-converter
+```
+
+That writes an Xcode project to `dist/safari-xcode`. Open it, build and run
+the app once, then enable the extension in Safari → Settings → Extensions and
+give it access to instagram.com. For an unsigned local build, tick Develop →
+*Allow Unsigned Extensions* first; that resets each time Safari restarts.
+Distributing it to anyone else means an Apple Developer account and the App
+Store, which is Apple's rule for all Safari extensions, not a choice made
+here.
+
+> **Untested.** `dist/safari` is generated and its manifest is Safari-shaped,
+> but the machine this was written on has no Xcode, so the converter and the
+> Xcode build have never been run. Treat the Safari path as unverified.
 
 For a permanent Firefox install you need a signed build
 (`web-ext sign --channel=unlisted` with AMO credentials); unsigned permanent
@@ -80,7 +101,7 @@ scans before they show anything.
 
 ### Not yet run end-to-end
 
-Verified so far: the diff logic and pacing-settings clamping (22 unit tests);
+Verified so far: the diff logic and pacing-settings clamping (23 unit tests);
 the whole dashboard rendering in a real Chrome tab against stubbed extension
 APIs — stats, grouped tabs, list rows, history, the Settings panel and the
 first-run panel, with no console errors; `web-ext lint` clean; and — probed
@@ -155,6 +176,9 @@ real follower loss.
 | `directory` | id → name/flags, so accounts that leave still render properly |
 | `settings` | Your scan pacing settings |
 
+Directory entries and the latest scan each carry a `profile_pic_url`, which is
+why those two keys are the bulk of the stored bytes for a large account.
+
 `unlimitedStorage` is requested because a large account across 60 snapshots
 exceeds the default quota. **Delete all stored data** in the footer wipes
 everything, including your pacing settings, which return to defaults.
@@ -192,10 +216,11 @@ grep -rnE "fetch\(|XMLHttpRequest|sendBeacon|WebSocket|navigator\.|eval\(" src/*
 grep -rohE "https?://[^\"' ]+" src/*.js src/*.html | sort -u
 ```
 
-No remote fonts, scripts, or images. Profile pictures are deliberately **not**
-fetched — avatars render as initials — so opening your dashboard sends nothing
-to Instagram's CDN. The Firefox manifest declares
-`data_collection_permissions: { required: ["none"] }`.
+No remote fonts, scripts, or ads, and no third-party hosts of any kind. The
+only remote images are Instagram profile pictures, served by Instagram, and
+the dashboard falls back to initials whenever one does not load — those URLs
+are signed and expire, so entries from older scans routinely will not. The
+Firefox manifest declares `data_collection_permissions: { required: ["none"] }`.
 
 For contrast, IG Track ships Mixpanel with thirteen tracked events bound to
 your Google identity; see [ANALYSIS.md](ANALYSIS.md).
