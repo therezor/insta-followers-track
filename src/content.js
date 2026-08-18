@@ -45,7 +45,7 @@
       cancelRequested = false;
       sendResponse({ ok: true });
 
-      runScan()
+      runScan(message.settings)
         .then((data) => {
           broadcast({ type: 'FL_SCAN_DONE', data });
         })
@@ -78,7 +78,27 @@
 
   let scanning = false;
   let cancelRequested = false;
-  let settings = null;   // resolved from FLSettings when a scan starts
+
+  /*
+   * src/settings.js is the authority on defaults and clamping, and the
+   * dashboard normalises through it before asking for a scan. These values
+   * are a last resort for the case where the scan was started without them.
+   *
+   * The content script deliberately does NOT load settings.js. Depending on a
+   * second file's global made a scan fail outright whenever that file was
+   * missing - which happens whenever the browser is still running a manifest
+   * older than the files on disk, since content-script files are re-read from
+   * disk but the manifest's file list is not.
+   */
+  const FALLBACK_SETTINGS = {
+    minDelaySec: 2,
+    maxDelaySec: 12,
+    pauseEvery: 200,
+    pauseMinMin: 1,
+    pauseMaxMin: 3
+  };
+
+  let settings = FALLBACK_SETTINGS;
 
   // ---------------------------------------------------------------- helpers
 
@@ -111,8 +131,8 @@
     async beforeRequest() {
       if (this.completed === 0) return;
 
-      if (globalThis.FLSettings.shouldLongPause(settings, this.completed)) {
-        const ms = globalThis.FLSettings.longPauseMs(settings);
+      if (shouldLongPause(this.completed)) {
+        const ms = longPauseMs();
         await waitFor(ms, (secondsLeft) => {
           // Every tick would be a storage write in the background for a
           // change nobody can read. Five-second steps, then every second
@@ -131,7 +151,7 @@
         return;
       }
 
-      await waitFor(globalThis.FLSettings.requestDelayMs(settings));
+      await waitFor(requestDelayMs());
     },
 
     afterRequest() {
@@ -146,26 +166,45 @@
     return m + 'm ' + String(s).padStart(2, '0') + 's';
   }
 
-  async function loadSettings() {
-    // Named explicitly so a missing settings.js fails here, with a message
-    // that says which file is absent, rather than at load time - where it
-    // would take the message listener down with it.
-    const FLSettings = globalThis.FLSettings;
-    if (!FLSettings) {
-      throw new ScanError(
-        'settings.js did not load in this tab. Reload the extension, then ' +
-          'reload instagram.com.',
-        'missing_settings'
-      );
-    }
+  /**
+   * Accept whatever the scan request carried, guarding only against values
+   * that would break pacing: a non-number, a negative, or an inverted range
+   * (which yields a negative delay, sleeps for zero, and silently removes the
+   * pacing altogether). Full clamping lives in settings.js.
+   */
+  function adoptSettings(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    const num = (value, fallback) => {
+      const n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? n : fallback;
+    };
 
-    try {
-      const store = await api.storage.local.get('settings');
-      settings = FLSettings.normalizeSettings(store?.settings);
-    } catch (_) {
-      settings = FLSettings.DEFAULTS;
-    }
+    const next = {
+      minDelaySec: num(src.minDelaySec, FALLBACK_SETTINGS.minDelaySec),
+      maxDelaySec: num(src.maxDelaySec, FALLBACK_SETTINGS.maxDelaySec),
+      pauseEvery: num(src.pauseEvery, FALLBACK_SETTINGS.pauseEvery),
+      pauseMinMin: num(src.pauseMinMin, FALLBACK_SETTINGS.pauseMinMin),
+      pauseMaxMin: num(src.pauseMaxMin, FALLBACK_SETTINGS.pauseMaxMin)
+    };
+
+    if (next.maxDelaySec < next.minDelaySec) next.maxDelaySec = next.minDelaySec;
+    if (next.pauseMaxMin < next.pauseMinMin) next.pauseMaxMin = next.pauseMinMin;
+
+    settings = next;
   }
+
+  const requestDelayMs = () =>
+    (settings.minDelaySec +
+      Math.random() * (settings.maxDelaySec - settings.minDelaySec)) *
+    1000;
+
+  const longPauseMs = () =>
+    (settings.pauseMinMin +
+      Math.random() * (settings.pauseMaxMin - settings.pauseMinMin)) *
+    60000;
+
+  const shouldLongPause = (completed) =>
+    settings.pauseEvery > 0 && completed > 0 && completed % settings.pauseEvery === 0;
 
   function readCookie(name) {
     const match = document.cookie.match(
@@ -406,8 +445,8 @@
 
   // ----------------------------------------------------------------- driver
 
-  async function runScan() {
-    await loadSettings();
+  async function runScan(requestedSettings) {
+    adoptSettings(requestedSettings);
     pacer.completed = 0;
 
     const appId = findAppId();

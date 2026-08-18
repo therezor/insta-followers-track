@@ -3,11 +3,14 @@
  * content.js - and checks that it registers a message listener and answers a
  * ping. Run: npm test
  *
- * This exists because of a real failure: a load-time reference to FLSettings
- * sat above the listener registration, so if settings.js was ever missing the
- * script died before it could answer anything. The tab then looked
- * permanently unreachable, with no error the user could see. Syntax checks
- * cannot catch that; executing the file can.
+ * This exists because of two real failures, both caused by the content script
+ * depending on settings.js. First a load-time reference to FLSettings sat
+ * above the listener registration, so a missing settings.js killed the script
+ * before it could answer anything and the tab looked permanently unreachable.
+ * Then, hardened, it answered pings but refused every scan. The dependency is
+ * gone now - the dashboard sends normalised settings with the scan request -
+ * and these tests hold that line. Syntax checks cannot; executing the file
+ * can.
  */
 
 const test = require('node:test');
@@ -19,7 +22,7 @@ const vm = require('node:vm');
 const SRC = path.join(__dirname, '..', 'src');
 
 /** Minimal stand-ins for the surface content.js touches while loading. */
-function loadContentScript({ withSettings = true } = {}) {
+function loadContentScript({ withSettings = false } = {}) {
   let listener = null;
 
   const sandbox = {
@@ -66,16 +69,32 @@ test('content.js registers its listener and answers a ping', () => {
   assert.strictEqual(response?.scanning, false);
 });
 
-test('the listener survives settings.js being absent', () => {
-  // Not a supported configuration, but it must degrade to "answers the ping
-  // and fails later with a clear message" rather than "tab is unreachable".
-  const { listener } = loadContentScript({ withSettings: false });
+test('content.js loads with no settings.js present at all', () => {
+  // The shipped manifest injects content.js alone. A browser still running an
+  // older manifest may inject settings.js too, so both must work.
+  const bare = loadContentScript({ withSettings: false });
+  assert.ok(bare.listener, 'content.js did not register a listener on its own');
 
-  assert.ok(listener, 'a missing settings.js took the listener down with it');
+  const withExtra = loadContentScript({ withSettings: true });
+  assert.ok(withExtra.listener, 'content.js broke when settings.js was present');
+});
 
-  let response = null;
-  listener({ type: 'FL_PING' }, {}, (r) => { response = r; });
-  assert.strictEqual(response?.ok, true);
+test('content.js does not reference FLSettings', () => {
+  // The dependency this file exists to prevent. The dashboard normalises
+  // settings and sends them with the scan request instead.
+  const source = fs.readFileSync(path.join(SRC, 'content.js'), 'utf8');
+  assert.ok(
+    !source.includes('FLSettings'),
+    'content.js reads FLSettings again - a stale manifest would break scans'
+  );
+});
+
+test('the manifest injects only content.js as a content script', () => {
+  const build = fs.readFileSync(path.join(SRC, '..', 'build.mjs'), 'utf8');
+  assert.ok(
+    /js: \['content\.js'\]/.test(build),
+    'content_scripts lists more than content.js'
+  );
 });
 
 test('an unknown message type is ignored without throwing', () => {

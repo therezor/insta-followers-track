@@ -14,7 +14,7 @@ const PING_INTERVAL_MS = 500;
 // instagram.com is a heavy SPA and a background tab is throttled, so the old
 // six-second budget expired before the content script ever ran.
 const TAB_READY_TIMEOUT_MS = 25000;
-const CONTENT_FILES = ['settings.js', 'content.js'];
+const CONTENT_FILES = ['content.js'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -390,8 +390,19 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
           error: null
         });
 
+        // Pass the caller's settings through; fall back to whatever is stored
+        // so a scan started without them still respects the user's pacing.
+        let settings = message.settings;
+        if (!settings) {
+          const store = await api.storage.local.get('settings');
+          settings = store?.settings ?? null;
+        }
+
         const tabId = await ensureInstagramTab();
-        const res = await api.tabs.sendMessage(tabId, { type: 'FL_SCAN_START' });
+        const res = await api.tabs.sendMessage(tabId, {
+          type: 'FL_SCAN_START',
+          settings
+        });
 
         if (!res || !res.ok) {
           throw new Error(res?.error || 'Instagram tab refused to start a scan.');

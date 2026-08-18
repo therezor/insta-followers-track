@@ -593,7 +593,12 @@ async function startScan() {
   setScanning(true, 'Starting');
 
   try {
-    const res = await api.runtime.sendMessage({ type: 'FL_REQUEST_SCAN' });
+    // Normalised here, where settings.js is guaranteed loaded, and carried to
+    // the content script - which no longer loads settings.js itself.
+    const res = await api.runtime.sendMessage({
+      type: 'FL_REQUEST_SCAN',
+      settings: FLSettings.normalizeSettings(state.settings)
+    });
     if (!res || !res.ok) {
       setScanning(false);
       showBanner(res?.error || 'Could not start the scan.', 'error');

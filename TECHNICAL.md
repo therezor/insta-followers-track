@@ -19,7 +19,7 @@ the bundle.
 src/          shared source — identical in both browsers
   manifest is generated, not stored here
 build.mjs     emits dist/firefox and dist/chrome
-test/         unit tests: diff logic, pacing settings, content-script load
+test/         unit tests: diff, pacing, content-script load and scan
 dist/         build output (gitignored)
 ```
 
@@ -32,7 +32,7 @@ them. All extension API calls go through
 
 ```sh
 npm run build     # -> dist/firefox, dist/chrome, dist/safari (no npm install needed)
-npm test          # 26 unit tests: diff logic, pacing settings, content load
+npm test          # 33 unit tests: diff, pacing, content-script load and scan
 npm run lint      # web-ext lint: 0 errors, 0 warnings, 0 notices
 npm run package   # signed-ready zip of the Firefox build
 ```
@@ -94,9 +94,18 @@ scans before they show anything.
 - A `content_scripts` entry only applies to pages loaded *after* the extension
   was installed or reloaded, so an instagram.com tab that was already open has
   no content script until it is reloaded. `background.js` therefore pings each
-  candidate tab and, on silence, injects `settings.js` + `content.js` with
+  candidate tab and, on silence, injects `content.js` with
   `scripting.executeScript` before giving up. That is what the `scripting`
   permission is for; it is the only reason it is requested.
+- `content.js` is the **only** content script, and depends on no other file.
+  It used to read `FLSettings` from `settings.js`, which broke every scan
+  whenever the browser was running a manifest older than the files on disk —
+  content-script files are re-read from disk on each injection, but the
+  manifest's file list is not, so `content.js` would arrive alone and fail.
+  The dashboard now normalises settings through `settings.js` (where that file
+  is unambiguously loaded) and sends them on the scan request. `content.js`
+  keeps a small fallback copy of the defaults for a scan started without them,
+  and `test/content-load.test.js` fails if the dependency is ever reintroduced.
 - It walks `/api/v1/friendships/<id>/followers/` and `.../following/`, 50 per
   page, following `next_max_id` to the end.
 - `background.js` persists results to `storage.local` as the current scan plus
@@ -107,8 +116,10 @@ scans before they show anything.
 
 ### Not yet run end-to-end
 
-Verified so far: the diff logic, pacing-settings clamping, and that the
-content script loads and answers a ping (26 unit tests);
+Verified so far: the diff logic, pacing-settings clamping, and the content
+script itself — it loads, answers a ping, and runs a complete scan against a
+stubbed Instagram, including pagination, cancellation, a logged-out session
+and profile-picture sanitising (33 unit tests);
 the whole dashboard rendering in a real Chrome tab against stubbed extension
 APIs — stats, grouped tabs, list rows, history, the Settings panel and the
 first-run panel, with no console errors; `web-ext lint` clean; and — probed
@@ -150,7 +161,7 @@ If step 3 shows 0 accounts and no error, the REST response shape is wrong and
 
 `content_scripts` only covers pages loaded after the extension was installed
 or reloaded, so `background.js` cannot assume a content script is present. It
-pings each candidate tab four times, injects `settings.js` + `content.js` with
+pings each candidate tab four times, injects `content.js` with
 `scripting.executeScript` if nothing answers, then pings four more times —
 `status === 'complete'` does not mean a `document_idle` script has run, and
 `executeScript` resolves before the script has finished executing.
@@ -172,11 +183,17 @@ The first is by far the most common, and it is invisible otherwise: the
 extensions page shows the extension as loaded and enabled, the source on disk
 is correct, and only `getManifest()` disagrees.
 
-`test/content-load.test.js` executes `settings.js` + `content.js` in a `vm`
-context with stubbed browser globals and asserts a listener is registered and
-answers `FL_PING`. It also asserts that the script still registers with
-`settings.js` absent — the regression that made a tab look permanently
-unreachable was a load-time reference above the listener registration.
+`test/content-load.test.js` executes `content.js` in a `vm` context with
+stubbed browser globals and asserts a listener is registered and answers
+`FL_PING`, with and without `settings.js` alongside it, and that the source
+never mentions `FLSettings` again.
+
+`test/content-scan.test.js` goes further and drives a whole scan: a stubbed
+`fetch` serves paginated friendship responses, and the test asserts the cursor
+is followed, both lists come back in order, a cancel mid-wait reports
+`cancelled` rather than completing, a logged-out session fails with an `auth`
+code, and non-https picture URLs are dropped. Until this existed the scan path
+had never run anywhere — every fix to it shipped on inspection alone.
 
 ### Rate limiting
 
