@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FollowLens</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <h1>FollowLens</h1>
+        <p class="sub" id="profile-line">Not scanned yet</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="scan-btn" class="btn primary">Scan now</button>
+      <button id="cancel-btn" class="btn ghost" hidden>Cancel</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="progress" class="progress" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <div>
+      <strong id="progress-note">Working</strong>
+      <span id="progress-count" class="muted"></span>
+    </div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <section class="toolbar">
+    <input id="search" type="search" placeholder="Filter by username or name" autocomplete="off">
+    <select id="sort">
+      <option value="found">Order found (newest first)</option>
+      <option value="username">Username A-Z</option>
+      <option value="fullname">Name A-Z</option>
+    </select>
+    <span class="spacer"></span>
+    <span id="result-count" class="muted"></span>
+    <button id="export-btn" class="btn small">Export CSV</button>
+  </section>
+
+  <section id="list" class="list"></section>
+
+  <section id="history" class="history" hidden></section>
+
+  <footer class="foot">
+    <p>All data is computed and stored locally in this browser. FollowLens makes
+      no requests to any server other than instagram.com itself.</p>
+    <button id="wipe-btn" class="btn danger small">Delete all stored data</button>
+  </footer>
+
+  <script src="diff.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "insta-followers-track",
+  "version": "1.0.0",
+  "description": "Local Instagram follower / unfollower tracking for Firefox and Chrome.",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/diff.test.js",
+    "lint": "npm run build && web-ext lint --source-dir dist/firefox",
+    "package": "npm run build && web-ext build --source-dir dist/firefox --artifacts-dir dist --overwrite-dest",
+    "dev": "npm run build && web-ext run --source-dir dist/firefox"
+  },
+  "devDependencies": {
+    "web-ext": "^8.0.0"
+  }
+}
