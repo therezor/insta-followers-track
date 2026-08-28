@@ -6,7 +6,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/therezor/insta-followers-track/releases/latest">Download</a> ·
+  <a href="https://chromewebstore.google.com/detail/follower-tracker/fnckjeadllapkjjlcdcpkloodghhonfg">Get it for Chrome</a> ·
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/follower-tracker/">Get it for Firefox</a> ·
   <a href="#install">Install</a> ·
   <a href="#what-it-shows">Features</a> ·
   <a href="#what-it-looks-like">Screenshots</a> ·
@@ -158,24 +159,28 @@ page at
 
 ## Install
 
-Download the build for your browser from
+- **Chrome** — **[install from the Chrome Web Store](https://chromewebstore.google.com/detail/follower-tracker/fnckjeadllapkjjlcdcpkloodghhonfg)**
+- **Firefox** — **[install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/follower-tracker/)**
+- **Safari** — not in the App Store. It needs Xcode, because Apple requires
+  every Safari extension to be wrapped in an app. See
+  [TECHNICAL.md](TECHNICAL.md).
+
+### Or load it yourself
+
+You don't have to use the stores. Download the build for your browser from
 **[the latest release](https://github.com/therezor/insta-followers-track/releases/latest)**:
 
 - **Chrome** — extract the zip, then open `chrome://extensions`, turn on
   **Developer mode**, click **Load unpacked**, and pick the extracted folder.
 - **Firefox** — open `about:debugging#/runtime/this-firefox`, click **Load
   Temporary Add-on…**, and pick the zip. It stays until you restart Firefox.
-- **Safari** — needs Xcode, because Apple requires every Safari extension to
-  be wrapped in an app. See [TECHNICAL.md](TECHNICAL.md).
 
 Prefer to build it yourself? One command, nothing to install first —
 [TECHNICAL.md](TECHNICAL.md) has it.
 
-## Two things to know before you use it
+## One thing to know before you use it
 
-1. **It isn't in the browser stores yet.** For now you load it yourself with
-   the steps above — a couple of minutes. Store listings are coming.
-2. **Instagram doesn't officially allow tools like this.** Automatically
+**Instagram doesn't officially allow tools like this.** Automatically
    reading your own follower list is against Instagram's terms of service —
    true of every follower tracker, paid ones included. Scans run slowly on
    purpose (about 25 minutes for a 10,000-follower account) and you can make
