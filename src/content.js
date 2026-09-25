@@ -69,8 +69,15 @@
 
   // ------------------------------------------------------------------ setup
 
+  /*
+   * The request shape below is copied from instagram.com itself, observed in
+   * Chrome on 2026-09-25 by opening the Followers and Following dialogs:
+   * page size, query parameters, and every header its own XHR sets. A request
+   * that differs from the web app's is easy for Instagram to single out.
+   */
   const DEFAULT_APP_ID = '936619743392459';
-  const PAGE_SIZE = 50;
+  const ASBD_ID = '359341';
+  const PAGE_SIZE = 12;
   const MAX_PAGES = 4000;          // ~200k accounts, a hard runaway guard
   const RATE_LIMIT_BACKOFF_MS = 60000;
   const MAX_RETRIES = 3;
@@ -91,14 +98,110 @@
    * disk but the manifest's file list is not.
    */
   const FALLBACK_SETTINGS = {
-    minDelaySec: 2,
-    maxDelaySec: 12,
-    pauseEvery: 200,
+    minDelaySec: 1,
+    maxDelaySec: 5,
+    pauseEvery: 100,
     pauseMinMin: 1,
     pauseMaxMin: 3
   };
 
   let settings = FALLBACK_SETTINGS;
+
+  /**
+   * x-web-session-id is three six-character base-36 groups, and the scan
+   * sends the tab's own so its requests carry the same identity as the page's.
+   * As observed on 2026-09-25: the first group is the part of
+   * localStorage['Session'] before its colon, the second is
+   * sessionStorage['TabId'], and the third is per page load and lives only in
+   * the name of the logging queue key localStorage['bz:<id>.<ms>.<n>'].
+   * Newest bz: key for this browser and tab wins. Without one, the first two
+   * groups are still the page's and only the third is made up; with neither,
+   * all three are.
+   */
+  const SESSION_GROUP = /^[a-z0-9]{6}$/;
+  let fallbackSessionId = '';
+
+  function randomGroup() {
+    let out = '';
+    while (out.length < 6) out += Math.floor(Math.random() * 36).toString(36);
+    return out;
+  }
+
+  function readStorage(area, key) {
+    try {
+      return globalThis[area].getItem(key) || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function webSessionId() {
+    const browserGroup = readStorage('localStorage', 'Session').split(':')[0];
+    const tabGroup = readStorage('sessionStorage', 'TabId');
+    const haveBoth = SESSION_GROUP.test(browserGroup) && SESSION_GROUP.test(tabGroup);
+
+    if (haveBoth) {
+      try {
+        const prefix = 'bz:' + browserGroup + ':' + tabGroup + ':';
+        let best = null;
+        let bestTs = -1;
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i) || '';
+          if (!key.startsWith(prefix)) continue;
+          const m = key.slice(3).match(/^([a-z0-9]{6}:[a-z0-9]{6}:[a-z0-9]{6})\.(\d+)/);
+          if (m && Number(m[2]) > bestTs) {
+            best = m[1];
+            bestTs = Number(m[2]);
+          }
+        }
+        if (best) return best;
+      } catch (_) {
+        /* fall through */
+      }
+    }
+
+    if (!fallbackSessionId) {
+      fallbackSessionId = haveBoth
+        ? browserGroup + ':' + tabGroup + ':' + randomGroup()
+        : [randomGroup(), randomGroup(), randomGroup()].join(':');
+    }
+    return fallbackSessionId;
+  }
+
+  /**
+   * instagram.com sends its list requests from the profile page, so that is
+   * the Referer here too. Null when the username is unknown, which leaves the
+   * browser to send the tab's own URL as it would anyway.
+   */
+  let profileReferrer = null;
+
+  /**
+   * x-ig-www-claim is an HMAC Instagram hands out in the x-ig-set-www-claim
+   * response header; the web app keeps it in sessionStorage as www-claim-v2
+   * and echoes it on every request. Content scripts share that storage, so
+   * the value is read from there, then from the last response, then '0',
+   * which is what the web app itself sends before it has one.
+   */
+  let lastClaim = '';
+  function wwwClaim() {
+    return readStorage('sessionStorage', 'www-claim-v2') || lastClaim || '0';
+  }
+
+  /*
+   * In Firefox a content script's own fetch goes out under the extension's
+   * principal; content.fetch is the page's, so the request looks like one
+   * instagram.com made. Chrome has no `content` and already sends content
+   * script requests as the page.
+   */
+  const pageFetch = (() => {
+    try {
+      const page = globalThis.content;
+      if (page && typeof page.fetch === 'function') return page.fetch.bind(page);
+    } catch (_) {
+      /* not Firefox */
+    }
+    return (...args) => fetch(...args);
+  })();
 
   // ---------------------------------------------------------------- helpers
 
@@ -263,16 +366,23 @@
 
       let response;
       try {
-        response = await fetch(url, {
+        // Same headers, same order, as instagram.com's own list requests.
+        const init = {
           method: 'GET',
           credentials: 'include',
           headers: {
-            'x-ig-app-id': appId,
             'x-csrftoken': csrfToken || '',
-            'x-requested-with': 'XMLHttpRequest',
-            accept: '*/*'
+            'x-ig-app-id': appId,
+            'x-asbd-id': ASBD_ID,
+            'x-ig-www-claim': wwwClaim(),
+            'x-web-session-id': webSessionId(),
+            'x-ig-max-touch-points': String(globalThis.navigator?.maxTouchPoints || 0),
+            accept: '*/*',
+            'x-requested-with': 'XMLHttpRequest'
           }
-        });
+        };
+        if (profileReferrer) init.referrer = profileReferrer;
+        response = await pageFetch(url, init);
       } catch (networkError) {
         attempt += 1;
         if (attempt > MAX_RETRIES) {
@@ -281,9 +391,12 @@
             'network'
           );
         }
-        await sleep(RATE_LIMIT_BACKOFF_MS / 4);
+        await waitFor(RATE_LIMIT_BACKOFF_MS / 4);
         continue;
       }
+
+      const claim = response.headers?.get?.('x-ig-set-www-claim');
+      if (claim) lastClaim = claim;
 
       if (response.status === 429) {
         attempt += 1;
@@ -294,14 +407,18 @@
             'rate_limited'
           );
         }
-        const wait = RATE_LIMIT_BACKOFF_MS * attempt;
-        broadcast({
-          type: 'FL_PROGRESS',
-          phase: 'waiting',
-          note:
-            'Rate limited - pausing ' + Math.round(wait / 1000) + 's before retry'
+        // Waited in ticks like the long pause, so Cancel works during it and
+        // the progress line counts down instead of sitting on one number.
+        await waitFor(RATE_LIMIT_BACKOFF_MS * attempt, (secondsLeft) => {
+          if (secondsLeft > 5 && secondsLeft % 5 !== 0) return;
+          broadcast({
+            type: 'FL_PROGRESS',
+            phase: 'waiting',
+            note:
+              'Rate limited by Instagram (attempt ' + attempt + ' of ' +
+              MAX_RETRIES + ') - retrying in ' + formatCountdown(secondsLeft)
+          });
         });
-        await sleep(wait);
         continue;
       }
 
@@ -392,8 +509,13 @@
         '/api/v1/friendships/' + userId + '/' + kind + '/',
         location.origin
       );
+      // Parameter order as the web app sends it. Only the followers dialog
+      // adds search_surface; the following dialog sends count alone.
       url.searchParams.set('count', String(PAGE_SIZE));
       if (maxId) url.searchParams.set('max_id', String(maxId));
+      if (kind === 'followers') {
+        url.searchParams.set('search_surface', 'follow_list_page');
+      }
 
       const json = await igFetch(url.toString(), appId, csrfToken);
       const users = Array.isArray(json.users) ? json.users : [];
@@ -415,7 +537,17 @@
     return collected;
   }
 
-  async function resolveSelf(appId, csrfToken) {
+  /**
+   * The account id comes from the session cookie, and the name from the
+   * `PolarisViewer` config instagram.com embeds in every page it serves - the
+   * logged-in user's own record, checked against that id so another
+   * account's name can never be picked up. No request is made: the only
+   * endpoint for it, /users/<id>/info/, is a mobile-app one that
+   * instagram.com never calls and that Instagram 429s at once for a web
+   * session. If the page has no such config, the background keeps the
+   * username from an earlier scan.
+   */
+  function resolveSelf() {
     const userId = readCookie('ds_user_id');
     if (!userId) {
       throw new ScanError(
@@ -423,24 +555,59 @@
         'auth'
       );
     }
+    const viewer = findViewer(userId);
+    return {
+      pk: String(userId),
+      username: viewer.username,
+      full_name: viewer.full_name
+    };
+  }
 
-    let username = '';
-    let fullName = '';
+  const USERNAME = /^[A-Za-z0-9._]{1,30}$/;
+  const VIEWER_MARKER = '["PolarisViewer",[],{"data":';
+
+  function findViewer(userId) {
+    const none = { username: '', full_name: '' };
     try {
-      const info = await igFetch(
-        location.origin + '/api/v1/users/' + userId + '/info/',
-        appId,
-        csrfToken
-      );
-      username = info?.user?.username || '';
-      fullName = info?.user?.full_name || '';
-    } catch (err) {
-      // The username is cosmetic, but a cancel raised here must not be eaten
-      // along with it - the scan would carry on after the user stopped it.
-      if (err instanceof ScanError && err.code === 'cancelled') throw err;
+      const html = document.documentElement.innerHTML;
+      const at = html.indexOf(VIEWER_MARKER);
+      if (at < 0) return none;
+      const text = jsonObjectAt(html, at + VIEWER_MARKER.length);
+      if (!text) return none;
+      const data = JSON.parse(text);
+      if (String(data.id) !== String(userId)) return none;
+      return {
+        username: USERNAME.test(data.username) ? data.username : '',
+        full_name: typeof data.full_name === 'string' ? data.full_name : ''
+      };
+    } catch (_) {
+      return none;
     }
+  }
 
-    return { pk: String(userId), username, full_name: fullName };
+  /**
+   * The JSON object starting at `start`, found by matching braces outside
+   * strings - the biography inside it can hold any character, braces too.
+   */
+  function jsonObjectAt(text, start) {
+    if (text[start] !== '{') return '';
+    let depth = 0;
+    let inString = false;
+    for (let i = start; i < text.length && i < start + 200000; i += 1) {
+      const ch = text[i];
+      if (inString) {
+        if (ch === '\\') i += 1;
+        else if (ch === '"') inString = false;
+      } else if (ch === '"') {
+        inString = true;
+      } else if (ch === '{') {
+        depth += 1;
+      } else if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) return text.slice(start, i + 1);
+      }
+    }
+    return '';
   }
 
   // ----------------------------------------------------------------- driver
@@ -448,12 +615,16 @@
   async function runScan(requestedSettings) {
     adoptSettings(requestedSettings);
     pacer.completed = 0;
+    fallbackSessionId = '';
 
     const appId = findAppId();
     const csrfToken = readCookie('csrftoken');
 
     broadcast({ type: 'FL_PROGRESS', phase: 'starting', note: 'Identifying account' });
-    const profile = await resolveSelf(appId, csrfToken);
+    const profile = resolveSelf();
+    profileReferrer = profile.username
+      ? location.origin + '/' + profile.username + '/'
+      : null;
 
     broadcast({
       type: 'FL_PROGRESS',

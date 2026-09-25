@@ -191,6 +191,19 @@ test('rescanning the same account appends to its own history', async () => {
   assert.strictEqual(storage.data.accounts['111'].followers, 1);
 });
 
+test('a rescan that could not fetch the username keeps the known one', async () => {
+  const { storage, send } = loadBackground({});
+  await settle();
+
+  await send({ type: 'FL_SCAN_DONE', data: scan('111', 'alice', [1], [1]) });
+  await settle();
+  await send({ type: 'FL_SCAN_DONE', data: scan('111', '', [1], [1]) });
+  await settle();
+
+  assert.strictEqual(storage.data.accounts['111'].username, 'alice');
+  assert.strictEqual(storage.data.accounts['111'].full_name, 'alice');
+});
+
 test('deleting an account removes its bucket and picks a new active one', async () => {
   const { storage, send } = loadBackground({});
   await settle();

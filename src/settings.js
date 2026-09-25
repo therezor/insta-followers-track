@@ -13,9 +13,12 @@
   'use strict';
 
   const DEFAULTS = {
-    minDelaySec: 2,      // random gap between requests, lower bound
-    maxDelaySec: 12,     // random gap between requests, upper bound
-    pauseEvery: 200,     // long pause after this many requests; 0 disables
+    // A person scrolling the Followers dialog loads a 12-account page every
+    // second or two; 1-5 s stays in that range, and a break every 100 pages
+    // (1,200 accounts) is where someone would stop scrolling.
+    minDelaySec: 1,      // random gap between requests, lower bound
+    maxDelaySec: 5,      // random gap between requests, upper bound
+    pauseEvery: 100,     // long pause after this many requests; 0 disables
     pauseMinMin: 1,      // long pause length, lower bound, minutes
     pauseMaxMin: 3       // long pause length, upper bound, minutes
   };
@@ -88,7 +91,8 @@
   function estimateMinutes(settings, accounts) {
     const s = normalizeSettings(settings);
     const n = Number.isFinite(accounts) && accounts > 0 ? accounts : 0;
-    const requests = Math.ceil(n / 50);
+    // 12 per page: the size instagram.com requests, which content.js copies.
+    const requests = Math.ceil(n / 12);
     if (requests <= 1) return 0;
 
     const gaps = requests - 1;

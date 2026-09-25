@@ -6,11 +6,11 @@ const FLSettings = require('../src/settings.js');
 
 const { DEFAULTS, normalizeSettings } = FLSettings;
 
-test('defaults are the documented 2-12s interval and 200-request pause', () => {
+test('defaults are the documented 1-5s interval and 100-request pause', () => {
   assert.deepStrictEqual(DEFAULTS, {
-    minDelaySec: 2,
-    maxDelaySec: 12,
-    pauseEvery: 200,
+    minDelaySec: 1,
+    maxDelaySec: 5,
+    pauseEvery: 100,
     pauseMinMin: 1,
     pauseMaxMin: 3
   });
@@ -99,13 +99,14 @@ test('estimate reflects both the interval and the pauses', () => {
     maxDelaySec: 12,
     pauseEvery: 0
   });
-  // 10k accounts -> 200 requests -> 199 gaps at 7s average.
+  // 10k accounts -> 834 requests at 12 per page -> 833 gaps at 7s average.
   assert.strictEqual(
     Math.round(FLSettings.estimateMinutes(noPause, 10000)),
-    Math.round((199 * 7) / 60)
+    Math.round((833 * 7) / 60)
   );
 
-  const withPause = normalizeSettings(DEFAULTS);
+  // Same interval, pauses switched on: only the pauses can add time.
+  const withPause = normalizeSettings({ ...noPause, pauseEvery: 100 });
   assert.ok(
     FLSettings.estimateMinutes(withPause, 10000) >
       FLSettings.estimateMinutes(noPause, 10000)

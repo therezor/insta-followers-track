@@ -126,7 +126,7 @@ scans before they show anything.
   listener is kept as a fallback for a popup that fails to load.
 - The popup is pinned to 300px and nothing may widen it. A popup that
   overflows does not clip, it grows a horizontal scrollbar — which is what the
-  longest progress line ("Cooling down after 200 requests — resuming in
+  longest progress line ("Cooling down after 100 requests — resuming in
   2m 30s") used to do. Progress text wraps, buttons shrink and ellipsise, and
   the scan button is hidden rather than disabled during a scan: three buttons
   do not fit across 300px, and Stop is the only useful control mid-scan.
@@ -268,22 +268,60 @@ same one that covers expired URLs, so nothing else changes.
 ### Rate limiting
 
 Pacing is user-configurable from **Settings** in the dashboard, and every
-request in a scan goes through it — profile lookup, followers, and following
-share one counter, because Instagram rate limits the session, not the list.
+request in a scan goes through it — followers and following share one
+counter, because Instagram rate limits the session, not the list.
 
 | Setting | Default | Range |
 | --- | --- | --- |
-| Random interval between requests | 2 – 12 s | 0 – 300 s |
-| Pause after every N requests | 200 (0 disables) | 0 – 10,000 |
+| Random interval between requests | 1 – 5 s | 0 – 300 s |
+| Pause after every N requests | 100 (0 disables) | 0 – 10,000 |
 | Pause length | 1 – 3 min | 0 – 120 min |
 
 Both ranges are sampled uniformly per request, so the traffic has no fixed
-period. At the defaults a 10,000-follower account is 200 requests and takes
-roughly 25 minutes; the Settings panel estimates this live from your last
-scan size.
+period. Pages are 12 accounts, the size instagram.com itself asks for, so
+at the defaults a 10,000-follower account is about 834 requests and takes
+roughly an hour (a 1 – 5 s gap is the pace of someone scrolling the dialog,
+with a 1 – 3 min break every 100 pages); the Settings panel estimates this live from your last scan
+size.
 
-Independently of these settings, HTTP 429 backs the scan off 60 s and retries
-up to three times before stopping with a clear message.
+Independently of these settings, HTTP 429 backs the scan off 60 s, 120 s, then
+180 s before stopping with a clear message. The backoff is cancellable and
+counts down on the progress line.
+
+Every request is shaped like the one instagram.com sends from its own
+Followers and Following dialogs (observed in Chrome, 2026-09-25): `count=12`,
+`max_id` for later pages, `search_surface=follow_list_page` on followers
+only, and the same headers in the same order: `x-csrftoken`, `x-ig-app-id`,
+`x-asbd-id` (`359341`), `x-ig-www-claim` (read from the page's
+`sessionStorage['www-claim-v2']`), `x-web-session-id`,
+`x-ig-max-touch-points`, `accept`, `x-requested-with`.
+
+The scan also carries the tab's own identity rather than a second one:
+
+- `x-web-session-id` is the page's. It is three groups: the first from
+  `localStorage['Session']`, the second from `sessionStorage['TabId']`, the
+  third only in the name of the page's newest `localStorage['bz:<id>.<ms>.<n>']`
+  key. With no such key the first two are still the page's; with neither,
+  the id is random for that scan.
+- `Referer` is your profile page, `https://www.instagram.com/<username>/`,
+  which is where the web app's own Followers dialog sends from.
+- The username and full name come from the `PolarisViewer` config that
+  instagram.com embeds in every page (checked on the home and profile pages),
+  used only when its `id` matches your `ds_user_id` cookie.
+
+These storage layouts are Instagram internals and can change; each one
+falls back rather than failing the scan.
+
+In Firefox the request goes through `content.fetch`, so it carries the page's principal
+rather than the extension's. `x-asbd-id` is a constant from Instagram's
+bundle and will need updating if they change it.
+
+A scan calls only the two friendship lists. The account id comes from the
+`ds_user_id` cookie and the username from the page, as above. There is no
+username request: the only endpoint for it,
+`/api/v1/users/<id>/info/`, is a mobile-app endpoint instagram.com never
+calls, and Instagram 429s it for web sessions on the very first request. An
+account keeps the username stored from an earlier scan.
 
 `src/settings.js` is pure — no DOM, no extension APIs — so the clamping is
 unit-tested. It normalises **on read as well as on write**: a stored range

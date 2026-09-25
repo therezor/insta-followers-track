@@ -183,7 +183,7 @@ Prefer to build it yourself? One command, nothing to install first —
 **Instagram doesn't officially allow tools like this.** Automatically
    reading your own follower list is against Instagram's terms of service —
    true of every follower tracker, paid ones included. Scans run slowly on
-   purpose (about 25 minutes for a 10,000-follower account) and you can make
+   purpose (about an hour for a 10,000-follower account) and you can make
    them slower under **Settings**. Scan occasionally, not constantly.
 
 ## How it works

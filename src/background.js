@@ -427,7 +427,17 @@ async function persistScan(data) {
 
   const accounts =
     store.accounts && typeof store.accounts === 'object' ? store.accounts : {};
-  accounts[pk] = summarize(data.profile, latest);
+  // The username lookup is skipped when Instagram rate limits it, so an
+  // empty one means "unknown this time", not "renamed to nothing".
+  const previous = accounts[pk] || {};
+  accounts[pk] = summarize(
+    {
+      ...data.profile,
+      username: data.profile.username || previous.username,
+      full_name: data.profile.full_name || previous.full_name
+    },
+    latest
+  );
 
   await api.storage.local.set({
     accounts,
