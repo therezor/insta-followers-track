@@ -278,50 +278,59 @@ counter, because Instagram rate limits the session, not the list.
 | Pause length | 1 – 3 min | 0 – 120 min |
 
 Both ranges are sampled uniformly per request, so the traffic has no fixed
-period. Pages are 12 accounts, the size instagram.com itself asks for, so
-at the defaults a 10,000-follower account is about 834 requests and takes
-roughly an hour (a 1 – 5 s gap is the pace of someone scrolling the dialog,
-with a 1 – 3 min break every 100 pages); the Settings panel estimates this live from your last scan
-size.
+period. Pages are 12 accounts, the size instagram.com itself asks for. At
+the defaults a 10,000-follower account is about 834 requests and takes
+roughly an hour. A 1-5 s gap matches someone scrolling the Followers dialog,
+and the 1-3 minute break every 100 pages is where that person would stop.
+The Settings panel estimates the time live from your last scan size.
 
-Independently of these settings, HTTP 429 backs the scan off 60 s, 120 s, then
-180 s before stopping with a clear message. The backoff is cancellable and
-counts down on the progress line.
+Independently of these settings, an HTTP 429 makes the scan wait 60 s, then
+120 s, then 180 s, and then stop with a clear message. Cancel works during
+these waits, and the progress line counts them down.
 
-Every request is shaped like the one instagram.com sends from its own
-Followers and Following dialogs (observed in Chrome, 2026-09-25): `count=12`,
-`max_id` for later pages, `search_surface=follow_list_page` on followers
-only, and the same headers in the same order: `x-csrftoken`, `x-ig-app-id`,
-`x-asbd-id` (`359341`), `x-ig-www-claim` (read from the page's
-`sessionStorage['www-claim-v2']`), `x-web-session-id`,
-`x-ig-max-touch-points`, `accept`, `x-requested-with`.
+Each request copies the one instagram.com sends from its own Followers and
+Following dialogs, as observed in Chrome on 2026-09-25. The URL has
+`count=12`, `max_id` on later pages, and `search_surface=follow_list_page`
+on followers only. The headers, in the web app's order, are:
 
-The scan also carries the tab's own identity rather than a second one:
+- `x-csrftoken`
+- `x-ig-app-id`
+- `x-asbd-id`, fixed at `359341`. It is a constant from Instagram's bundle
+  and needs updating if Instagram changes it.
+- `x-ig-www-claim`, read from the page's `sessionStorage['www-claim-v2']`
+- `x-web-session-id`
+- `x-ig-max-touch-points`
+- `accept`
+- `x-requested-with`
 
-- `x-web-session-id` is the page's. It is three groups: the first from
-  `localStorage['Session']`, the second from `sessionStorage['TabId']`, the
-  third only in the name of the page's newest `localStorage['bz:<id>.<ms>.<n>']`
-  key. With no such key the first two are still the page's; with neither,
-  the id is random for that scan.
+The scan also reuses the Instagram tab's own session details, so Instagram
+does not see a second session in the same tab:
+
+- `x-web-session-id` is the page's. It has three groups. The first comes from
+  `localStorage['Session']` and the second from `sessionStorage['TabId']`.
+  The third exists only in the name of the page's newest
+  `localStorage['bz:<id>.<ms>.<n>']` key. Without that key, the scan keeps
+  the first two groups and makes up the third. Without either, it makes up
+  the whole id for that scan.
 - `Referer` is your profile page, `https://www.instagram.com/<username>/`,
-  which is where the web app's own Followers dialog sends from.
+  because the web app's own Followers dialog sends from there.
 - The username and full name come from the `PolarisViewer` config that
-  instagram.com embeds in every page (checked on the home and profile pages),
-  used only when its `id` matches your `ds_user_id` cookie.
+  instagram.com embeds in every page. This was checked on the home and
+  profile pages. The scan uses it only when its `id` matches your
+  `ds_user_id` cookie.
 
-These storage layouts are Instagram internals and can change; each one
-falls back rather than failing the scan.
+These storage layouts are Instagram internals and can change. If one is
+missing, the scan uses the fallback above instead of failing.
 
-In Firefox the request goes through `content.fetch`, so it carries the page's principal
-rather than the extension's. `x-asbd-id` is a constant from Instagram's
-bundle and will need updating if they change it.
+In Firefox the scan sends its requests through `content.fetch`, so Firefox
+sends them as the page's requests, not the extension's.
 
 A scan calls only the two friendship lists. The account id comes from the
-`ds_user_id` cookie and the username from the page, as above. There is no
-username request: the only endpoint for it,
-`/api/v1/users/<id>/info/`, is a mobile-app endpoint instagram.com never
-calls, and Instagram 429s it for web sessions on the very first request. An
-account keeps the username stored from an earlier scan.
+`ds_user_id` cookie and the username from the page. The scan makes no
+username request. The only endpoint for it, `/api/v1/users/<id>/info/`, is a
+mobile-app endpoint that instagram.com never calls, and Instagram answers it
+with a 429 on the first request from a web session. An account keeps the
+username stored from an earlier scan.
 
 `src/settings.js` is pure — no DOM, no extension APIs — so the clamping is
 unit-tested. It normalises **on read as well as on write**: a stored range

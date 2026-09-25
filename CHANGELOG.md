@@ -2,38 +2,40 @@
 
 ## 1.1.0 — 2026-09-25
 
-Scans that Instagram was stopping at the first request now run. Every request
-is now shaped like the ones instagram.com itself sends.
+Scans that Instagram stopped at the first request now run. The extension now
+sends every request the way instagram.com itself does.
 
 ### Fixed
 
 - **Instant "Rate limited - pausing 60s before retry".** A scan opened with a
   call to `/api/v1/users/<id>/info/`, a mobile-app endpoint the website never
   uses, and Instagram answered it with an immediate HTTP 429. The scan then
-  sat through three back-offs, about 6 minutes, and looked broken. That call is gone. Your
-  username now comes from data instagram.com already puts in the page.
-- **Cancel during a rate-limit back-off** now takes effect within a second,
-  and the progress line counts down instead of showing a fixed number.
+  waited through three back-offs, about 6 minutes in all, and looked broken.
+  The extension no longer makes that call. It reads your username from data
+  instagram.com already puts in the page.
+- **Cancel works during a rate-limit back-off.** It takes effect within a
+  second, and the progress line counts down instead of showing a fixed
+  number.
 - **A rescan never blanks a known username.** If the page does not say who
   you are, the account keeps the name from its last scan.
 
 ### Changed
 
-- **Requests match the web app's own.** Copied from the Followers and
-  Following dialogs:
+- **Requests match the web app's own.** They copy what instagram.com sends
+  from its Followers and Following dialogs:
   - 12 accounts per page, with the same query parameters.
   - The same headers, in the same order: `x-asbd-id`, `x-ig-www-claim`,
     `x-web-session-id`, `x-ig-max-touch-points` and the existing ones.
-- **Requests carry the tab's own identity.**
-  - The page's own `x-web-session-id` and claim.
-  - Your profile page as the `Referer`, which is where instagram.com sends
-    these requests from.
-  - In Firefox, requests go through `content.fetch`, so they are sent as the
-    page's rather than the extension's.
-- **Faster default pacing to suit the smaller pages:** 1–5 s between requests
-  (was 2–12 s), and a 1–3 minute pause every 100 requests (was every 200).
-  A 10,000-follower account takes about an hour. If you saved your own
-  values in Settings, they still apply.
+- **Requests reuse the Instagram tab's session details.**
+  - They send the page's own `x-web-session-id` and `x-ig-www-claim` values.
+  - They send your profile page as the `Referer`, because instagram.com sends
+    these requests from there.
+  - In Firefox, they go through `content.fetch`, so Firefox sends them as the
+    page's requests, not the extension's.
+- **Faster default pacing.** Pages are smaller now, so the gap between
+  requests drops to 1-5 s from 2-12 s, and the 1-3 minute pause comes every
+  100 requests instead of every 200. A 10,000-follower account takes about an
+  hour. If you saved your own values in Settings, they still apply.
 
 No new permissions, and nothing new is stored or sent anywhere.
 
